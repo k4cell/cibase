@@ -1,0 +1,32 @@
+-- Criando a tabela de Clientes
+CREATE TABLE clientes (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    telefone VARCHAR(20)
+);
+
+-- Criando a tabela de Vendas
+CREATE TABLE vendas (
+    id SERIAL PRIMARY KEY,
+    cliente_id INT REFERENCES clientes(id),
+    valor DECIMAL(10, 2) NOT NULL,
+    data_da_venda DATE NOT NULL
+);
+
+
+-- Cadastrando 5 clientes fictícios
+INSERT INTO clientes (nome, telefone) VALUES 
+('Roberto Almeida', '11999990001'),
+('João Silva', '11999990002'),
+('Carla Mendes', '11999990003'),
+('Marcos Paulo', '11999990004'),
+('Ana Julia', '11999990005');
+
+-- Cadastrando vendas (Algumas recentes, outras de meses atrás)
+INSERT INTO vendas (cliente_id, valor, data_da_venda) VALUES 
+(1, 5800.00, '2025-02-10'), -- Roberto (18 meses atrás)
+(1, 420.00, '2025-02-12'),  
+(2, 2500.00, '2025-09-15'), -- João (11 meses atrás)
+(3, 800.00, '2026-01-20'),  -- Carla (7 meses atrás)
+(4, 150.00, '2026-07-05'),  -- Marcos (Mês passado - Cliente ativo)
+(5, 3200.00, '2024-11-10'); -- Ana (Quase 2 anos atrás)

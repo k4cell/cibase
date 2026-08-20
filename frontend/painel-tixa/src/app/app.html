@@ -1,0 +1,58 @@
+<div style="font-family: Arial, sans-serif; padding: 20px;">
+  <h1>Painel de Recuperação - Projeto Tixa</h1>
+
+  <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border: 1px solid #ddd; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+    
+    <h3 style="width: 100%; margin-top: 0;">{{ clienteEditandoId ? 'Editar Cliente' : 'Cadastrar Novo Cliente' }}</h3>
+    
+    <input type="text" [(ngModel)]="novoNome" (input)="formatarNome($event)" placeholder="Nome do Cliente" maxlength="80" style="padding: 8px;">
+    
+    <input type="email" [(ngModel)]="novoEmail" placeholder="E-mail" style="padding: 8px; width: 200px;">
+    
+    <input type="text" [(ngModel)]="novoCpf" (input)="formatarCpf($event)" placeholder="CPF" maxlength="14" style="padding: 8px;">
+    
+    <input type="text" [(ngModel)]="novoTelefone" (input)="formatarTelefone($event)" placeholder="Telefone" maxlength="15" style="padding: 8px;">
+    
+    <button (click)="salvarCliente()" style="padding: 8px 15px; background-color: #28a745; color: white; border: none; cursor: pointer;">
+      {{ clienteEditandoId ? 'Atualizar' : 'Salvar' }}
+    </button>
+
+    <button *ngIf="clienteEditandoId" (click)="limparFormulario()" style="padding: 8px 15px; background-color: #6c757d; color: white; border: none; cursor: pointer;">
+      Cancelar
+    </button>
+  </div>
+
+  <table border="1" cellpadding="10" style="border-collapse: collapse; width: 100%; text-align: left;">
+    <thead style="background-color: #f2f2f2;">
+      <tr>
+        <th>ID</th>
+        <th>Nome</th>
+        <th>E-mail</th>
+        <th>CPF</th> 
+        <th>Telefone</th>
+        <th>Última Compra</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    
+    <tbody>
+      <tr *ngFor="let cliente of clientes">
+        <td>{{ cliente.id }}</td>
+        <td>{{ cliente.nome }}</td>
+        <td>{{ cliente.email }}</td> 
+        <td>{{ cliente.cpf }}</td> 
+        <td>{{ cliente.telefone }}</td>
+        <td style="font-weight: bold; color: #555;">{{ cliente.ultima_compra }}</td>
+        
+        <td>
+          <button (click)="editarCliente(cliente)" style="padding: 5px 10px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 3px; margin-right: 5px;">
+            Editar
+          </button>
+          <button (click)="excluirCliente(cliente.id)" style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; cursor: pointer; border-radius: 3px;">
+            Excluir
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
