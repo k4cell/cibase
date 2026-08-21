@@ -11,17 +11,22 @@ import { FormsModule } from '@angular/forms';
   styleUrl: './app.css'
 })
 export class AppComponent implements OnInit {
-  // A variável 'clientes' guarda a lista que vem do Python para desenhar a tabela
   clientes: any[] = [];
   
-  // Estas variáveis são as "memórias" das caixas de texto.
   novoNome: string = '';
   novoTelefone: string = '';
   novoCpf: string = ''; 
   novoEmail: string = ''; 
-  
-  // Se esta variável tiver um número, significa que estamos EDITANDO. Se for null, estamos CRIANDO.
+  novoDataNascimento: string = ''; 
+
+  clienteVendaId: number | null = null;
+  clienteVendaNome: string = '';
+  novaVendaValor: number | null = null;
+
   clienteEditandoId: number | null = null;
+  
+  // Variável que memoriza qual filtro está ativo (Versão 0.7)
+  filtroAtual: string = 'Todos';
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
@@ -77,18 +82,15 @@ export class AppComponent implements OnInit {
   }
 
   salvarCliente() {
-    // 1. Limpamos os dados apenas para validação matemática exata
     const nomeLimpo = this.novoNome.trim(); 
     const cpfLimpo = this.novoCpf.replace(/\D/g, ''); 
     const telefoneLimpo = this.novoTelefone.replace(/\D/g, ''); 
 
-    // 2. Validação 1: Bloqueia se algum campo estiver vazio
-    if (!nomeLimpo || !this.novoTelefone || !this.novoCpf || !this.novoEmail) {
-      alert('Por favor, preencha Nome, E-mail, CPF e Telefone.');
+    if (!nomeLimpo || !this.novoTelefone || !this.novoCpf || !this.novoEmail || !this.novoDataNascimento) {
+      alert('Por favor, preencha todos os campos, incluindo a Data de Nascimento.');
       return; 
     }
 
-    // 3. Validação 2: Tamanhos Mínimos e Máximos (A regra rigorosa voltou!)
     if (nomeLimpo.length < 3) {
       alert('O nome do cliente deve ter no mínimo 3 letras.');
       return;
@@ -102,27 +104,25 @@ export class AppComponent implements OnInit {
       return;
     }
 
-    // 4. Validação 3: Formato do E-mail
     const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
     if (!regexEmail.test(this.novoEmail)) {
       alert('Por favor, digite um endereço de e-mail válido (ex: contato@empresa.com).');
       return;
     }
 
-    // 5. "Empacota" os dados validados para mandar para o Python
     const dadosDoFormulario = {
       nome: nomeLimpo,
       telefone: this.novoTelefone,
       cpf: this.novoCpf,
-      email: this.novoEmail
+      email: this.novoEmail,
+      data_nascimento: this.novoDataNascimento
     };
 
     if (this.clienteEditandoId) {
-      // Usamos <any> para conseguir ler a resposta de erro do Python no PUT
       this.http.put<any>(`http://127.0.0.1:8000/clientes/${this.clienteEditandoId}`, dadosDoFormulario).subscribe({
         next: (resposta) => {
           if (resposta.erro) {
-            alert('Atenção: ' + resposta.erro); // Exibe alerta se o CPF já for de outro cliente
+            alert('Atenção: ' + resposta.erro); 
           } else {
             this.limparFormulario(); 
             this.carregarClientes(); 
@@ -131,11 +131,10 @@ export class AppComponent implements OnInit {
         error: (erro) => alert('Falha ao atualizar.')
       });
     } else {
-      // Usamos <any> para conseguir ler a resposta de erro do Python no POST
       this.http.post<any>('http://127.0.0.1:8000/clientes', dadosDoFormulario).subscribe({
         next: (resposta) => {
           if (resposta.erro) {
-            alert('Atenção: ' + resposta.erro); // Exibe aviso de CPF duplicado no novo cadastro
+            alert('Atenção: ' + resposta.erro); 
           } else {
             this.limparFormulario();
             this.carregarClientes();
@@ -152,6 +151,7 @@ export class AppComponent implements OnInit {
     this.novoTelefone = cliente.telefone;
     this.novoCpf = cliente.cpf !== 'Não informado' ? cliente.cpf : '';
     this.novoEmail = cliente.email !== 'Não informado' ? cliente.email : '';
+    this.novoDataNascimento = cliente.data_nascimento !== 'Não informado' ? cliente.data_nascimento : '';
   }
 
   limparFormulario() {
@@ -159,6 +159,7 @@ export class AppComponent implements OnInit {
     this.novoTelefone = '';
     this.novoCpf = '';
     this.novoEmail = '';
+    this.novoDataNascimento = '';
     this.clienteEditandoId = null;
   }
 
@@ -176,5 +177,116 @@ export class AppComponent implements OnInit {
       },
       error: (erro) => alert('Falha ao excluir.')
     });
+  }
+
+  // --- LÓGICA DO FAROL DE RISCO ---
+  calcularRiscoCor(dataUltimaCompra: string): string {
+    if (!dataUltimaCompra || dataUltimaCompra === 'Sem vendas') {
+      return 'transparent';
+    }
+
+    const dataCompra = new Date(dataUltimaCompra);
+    const hoje = new Date();
+    const diferencaTempo = hoje.getTime() - dataCompra.getTime();
+    const diasInativos = Math.floor(diferencaTempo / (1000 * 3600 * 24));
+
+    if (diasInativos <= 30) {
+      return '#d4edda'; 
+    } else if (diasInativos <= 90) {
+      return '#fff3cd'; 
+    } else {
+      return '#f8d7da'; 
+    }
+  }
+
+  exibirTextoDias(dataUltimaCompra: string): string {
+    if (!dataUltimaCompra || dataUltimaCompra === 'Sem vendas') {
+      return 'Sem vendas';
+    }
+
+    const dataCompra = new Date(dataUltimaCompra);
+    const hoje = new Date();
+    const diferencaTempo = hoje.getTime() - dataCompra.getTime();
+    const diasInativos = Math.floor(diferencaTempo / (1000 * 3600 * 24));
+
+    return `${dataUltimaCompra} (${diasInativos} dias)`;
+  }
+
+  // --- LÓGICA DE REGISTRO DE VENDAS ---
+  abrirModalVenda(cliente: any) {
+    this.clienteVendaId = cliente.id;
+    this.clienteVendaNome = cliente.nome;
+    this.novaVendaValor = null; 
+  }
+
+  fecharModalVenda() {
+    this.clienteVendaId = null;
+    this.clienteVendaNome = '';
+    this.novaVendaValor = null;
+  }
+
+  salvarVenda() {
+    if (!this.novaVendaValor || this.novaVendaValor <= 0) {
+      alert('Por favor, insira um valor válido maior que zero.');
+      return;
+    }
+
+    const dadosVenda = {
+      cliente_id: this.clienteVendaId,
+      valor: this.novaVendaValor
+    };
+
+    this.fecharModalVenda();
+    this.cdr.detectChanges(); 
+
+    this.http.post<any>('http://127.0.0.1:8000/vendas', dadosVenda).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) {
+          alert('Erro: ' + resposta.erro);
+        } else {
+          this.carregarClientes(); 
+        }
+      },
+      error: (erro) => alert('Falha ao registrar venda.')
+    });
+  }
+
+  // --- LÓGICA DE AUTOMAÇÃO DE WHATSAPP (VERSÃO 0.7) ---
+  abrirWhatsApp(cliente: any) {
+    let telefoneLimpo = cliente.telefone.replace(/\D/g, '');
+    
+    if (telefoneLimpo.length === 10 || telefoneLimpo.length === 11) {
+      telefoneLimpo = '55' + telefoneLimpo;
+    }
+
+    let mensagem = '';
+    const corRisco = this.calcularRiscoCor(cliente.ultima_compra);
+
+    if (corRisco === '#f8d7da') { 
+      mensagem = `Olá, ${cliente.nome}! Tudo bem? Já faz um tempo desde a sua última visita. Temos condições especiais para você voltar, podemos conversar?`;
+    } else if (corRisco === '#fff3cd') { 
+      mensagem = `Oi, ${cliente.nome}! Tudo certo? Viemos saber se você está precisando de alguma manutenção ou novidade. Nossa equipe está à disposição!`;
+    } else if (corRisco === '#d4edda') { 
+      mensagem = `Olá, ${cliente.nome}! Muito obrigado pela sua preferência recente. Como está sendo sua experiência com a nossa empresa?`;
+    } else { 
+      mensagem = `Olá, ${cliente.nome}! Tudo bem? Vimos o seu cadastro aqui e queremos te apresentar nossos serviços. Posso te enviar nosso catálogo?`;
+    }
+
+    const textoCodificado = encodeURIComponent(mensagem);
+    const url = `https://wa.me/${telefoneLimpo}?text=${textoCodificado}`;
+    window.open(url, '_blank');
+  }
+
+  // --- LÓGICA DE FILTROS DE RISCO (VERSÃO 0.7) ---
+  definirFiltro(cor: string) {
+    this.filtroAtual = cor;
+  }
+
+  obterClientesFiltrados() {
+    if (this.filtroAtual === 'Todos') {
+      return this.clientes;
+    }
+    // Filtra a lista comparando a cor do farol do cliente com a cor do filtro clicado
+    return this.clientes.filter(cliente => this.calcularRiscoCor(cliente.ultima_compra) === this.filtroAtual);
   }
 }

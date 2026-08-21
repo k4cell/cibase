@@ -9,6 +9,8 @@
     
     <input type="email" [(ngModel)]="novoEmail" placeholder="E-mail" style="padding: 8px; width: 200px;">
     
+    <input type="date" [(ngModel)]="novoDataNascimento" style="padding: 8px;" title="Data de Nascimento">
+    
     <input type="text" [(ngModel)]="novoCpf" (input)="formatarCpf($event)" placeholder="CPF" maxlength="14" style="padding: 8px;">
     
     <input type="text" [(ngModel)]="novoTelefone" (input)="formatarTelefone($event)" placeholder="Telefone" maxlength="15" style="padding: 8px;">
@@ -22,12 +24,43 @@
     </button>
   </div>
 
+  <div *ngIf="clienteVendaId" style="margin-bottom: 20px; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeeba; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-radius: 5px;">
+    
+    <h3 style="width: 100%; margin-top: 0; color: #856404;">💰 Nova Venda para: {{ clienteVendaNome }}</h3>
+    
+    <input type="number" [(ngModel)]="novaVendaValor" placeholder="Valor (Ex: 150.00)" style="padding: 8px; width: 150px;">
+    
+    <button (click)="salvarVenda()" style="padding: 8px 15px; background-color: #28a745; color: white; border: none; cursor: pointer; border-radius: 3px;">
+      Confirmar Pagamento
+    </button>
+    
+    <button (click)="fecharModalVenda()" style="padding: 8px 15px; background-color: #6c757d; color: white; border: none; cursor: pointer; border-radius: 3px;">
+      Cancelar
+    </button>
+  </div>
+
+  <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+    <button (click)="definirFiltro('Todos')" [style.fontWeight]="filtroAtual === 'Todos' ? 'bold' : 'normal'" style="padding: 8px 15px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background-color: #f2f2f2;">
+      Mostrar Todos
+    </button>
+    <button (click)="definirFiltro('#f8d7da')" [style.fontWeight]="filtroAtual === '#f8d7da' ? 'bold' : 'normal'" style="padding: 8px 15px; background-color: #f8d7da; border: 1px solid #f5c6cb; cursor: pointer; border-radius: 4px; color: #721c24;">
+      🚨 Risco Alto (Vermelhos)
+    </button>
+    <button (click)="definirFiltro('#fff3cd')" [style.fontWeight]="filtroAtual === '#fff3cd' ? 'bold' : 'normal'" style="padding: 8px 15px; background-color: #fff3cd; border: 1px solid #ffeeba; cursor: pointer; border-radius: 4px; color: #856404;">
+      ⚠️ Atenção (Amarelos)
+    </button>
+    <button (click)="definirFiltro('#d4edda')" [style.fontWeight]="filtroAtual === '#d4edda' ? 'bold' : 'normal'" style="padding: 8px 15px; background-color: #d4edda; border: 1px solid #c3e6cb; cursor: pointer; border-radius: 4px; color: #155724;">
+      ✅ Saudáveis (Verdes)
+    </button>
+  </div>
+
   <table border="1" cellpadding="10" style="border-collapse: collapse; width: 100%; text-align: left;">
     <thead style="background-color: #f2f2f2;">
       <tr>
         <th>ID</th>
         <th>Nome</th>
         <th>E-mail</th>
+        <th>Nascimento</th>
         <th>CPF</th> 
         <th>Telefone</th>
         <th>Última Compra</th>
@@ -35,19 +68,36 @@
       </tr>
     </thead>
     
+    <!--COLUNAS-->
     <tbody>
-      <tr *ngFor="let cliente of clientes">
+      <tr *ngFor="let cliente of obterClientesFiltrados()">
         <td>{{ cliente.id }}</td>
         <td>{{ cliente.nome }}</td>
         <td>{{ cliente.email }}</td> 
+        <td>{{ cliente.data_nascimento }}</td> 
         <td>{{ cliente.cpf }}</td> 
-        <td>{{ cliente.telefone }}</td>
-        <td style="font-weight: bold; color: #555;">{{ cliente.ultima_compra }}</td>
-        
+      <td>
+          <span (click)="abrirWhatsApp(cliente)" style="color: #007bff; text-decoration: underline; cursor: pointer; font-weight: bold; margin-right: 8px;" title="Abrir WhatsApp">
+            {{ cliente.telefone }}
+          </span>
+          <button (click)="abrirWhatsApp(cliente)" style="padding: 3px 6px; background-color: #25D366; color: white; border: none; cursor: pointer; border-radius: 3px; font-size: 12px;" title="Abrir WhatsApp">
+            📱 Whats
+          </button>
+        </td>
+        <td [ngStyle]="{'background-color': calcularRiscoCor(cliente.ultima_compra)}" style="font-weight: bold; color: #333; text-align: center; border-radius: 5px;">
+            {{ exibirTextoDias(cliente.ultima_compra) }}
+        </td>
+
+        <!--Botões de ação para cada cliente-->
         <td>
+          <button (click)="abrirModalVenda(cliente)" style="padding: 5px 10px; background-color: #ffc107; color: #333; border: none; cursor: pointer; border-radius: 3px; margin-right: 5px; font-weight: bold;">
+            + Venda
+          </button>
+          
           <button (click)="editarCliente(cliente)" style="padding: 5px 10px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 3px; margin-right: 5px;">
             Editar
           </button>
+          
           <button (click)="excluirCliente(cliente.id)" style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; cursor: pointer; border-radius: 3px;">
             Excluir
           </button>
