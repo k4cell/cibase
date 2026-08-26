@@ -14,11 +14,8 @@ export class AppComponent implements OnInit {
   // ==============================================================================
   // MEMÓRIAS DE ESTADO (VARIÁVEIS GLOBAIS)
   // ==============================================================================
-
-  // 1. Dados Principais
   clientes: any[] = [];
   
-  // 2. Memórias do Formulário de Clientes (Cadastro/Edição)
   novoNome: string = '';
   novoTelefone: string = '';
   novoCpf: string = ''; 
@@ -26,42 +23,70 @@ export class AppComponent implements OnInit {
   novoDataNascimento: string = ''; 
   clienteEditandoId: number | null = null;
 
-  // 3. Memórias do Formulário de Vendas
   clienteVendaId: number | null = null;
   clienteVendaNome: string = '';
   novaVendaValor: number | null = null;
 
-  // 4. Controles de Interface (UI) e Carregamento
   mostrarModalCadastro: boolean = false;
   salvandoCliente: boolean = false;
   filtroAtual: string = 'Todos';
 
-  // 5. Sistema de Avisos Flutuantes (Toast)
   toastMensagem: string = '';
   toastCor: string = '';
   toastVisivel: boolean = false;
 
-  // 6. Dashboard de Estatísticas
   totalRecuperado: number = 0;
   clientesReativados: number = 0;
 
+  // Memórias de Segurança (Login)
+  estaLogado: boolean = false;
+  loginEmail: string = '';
+  loginSenha: string = '';
+  carregandoLogin: boolean = false;
 
-  // ==============================================================================
-  // INICIALIZAÇÃO
-  // ==============================================================================
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
-    this.carregarClientes();
-    this.carregarEstatisticas();
+    // A tela abre em branco de propósito. Os dados só serão carregados APÓS o login!
   }
 
+  // ==============================================================================
+  // SISTEMA DE LOGIN E SEGURANÇA
+  // ==============================================================================
+  fazerLogin() {
+    if (!this.loginEmail || !this.loginSenha) {
+      this.mostrarToast('Preencha o e-mail e a senha para entrar.', '#ffc107');
+      return;
+    }
+
+    this.carregandoLogin = true;
+    const credenciais = { email: this.loginEmail, senha: this.loginSenha };
+
+    this.http.post<any>('http://127.0.0.1:8000/login', credenciais).subscribe({
+      next: (resposta) => {
+        this.carregandoLogin = false;
+        
+        if (resposta.erro) {
+          this.mostrarToast(resposta.erro, '#dc3545'); // Erro vermelho
+        } else {
+          this.estaLogado = true; // Libera o painel
+          this.mostrarToast('Bem-vindo ao Painel Tixa!', '#28a745');
+          
+          // Somente AGORA buscamos o dinheiro e os clientes no banco de dados!
+          this.carregarEstatisticas();
+          this.carregarClientes();
+        }
+      },
+      error: (erro) => {
+        this.carregandoLogin = false;
+        this.mostrarToast('Servidor offline. Verifique o Python.', '#dc3545');
+      }
+    });
+  }
 
   // ==============================================================================
-  // 1. FORMATAÇÃO VISUAL E MÁSCARAS DE TECLADO (TEMPO REAL)
+  // FORMATAÇÃO VISUAL E MÁSCARAS
   // ==============================================================================
-
-  /** Impede a digitação de números e símbolos no campo de nome */
   formatarNome(event: any) {
     const input = event.target as HTMLInputElement;
     let valor = input.value.replace(/[0-9]/g, '');
@@ -69,7 +94,6 @@ export class AppComponent implements OnInit {
     this.novoNome = valor;
   }
 
-  /** Aplica a máscara padrão de CPF (XXX.XXX.XXX-XX) instantaneamente na digitação */
   formatarCpf(event: any) {
     const input = event.target as HTMLInputElement;
     let v = input.value.replace(/\D/g, ''); 
@@ -83,7 +107,6 @@ export class AppComponent implements OnInit {
     this.novoCpf = v;
   }
 
-  /** Aplica a máscara padrão de Telefone Brasileiro (DDD) XXXX-XXXX */
   formatarTelefone(event: any) {
     const input = event.target as HTMLInputElement;
     let v = input.value.replace(/\D/g, ''); 
@@ -96,35 +119,28 @@ export class AppComponent implements OnInit {
     this.novoTelefone = v;
   }
 
-
   // ==============================================================================
-  // 2. COMUNICAÇÃO COM O BACKEND PYTHON (CRUD DE CLIENTES)
+  // COMUNICAÇÃO COM O BACKEND
   // ==============================================================================
-
-  /** Busca a lista de clientes com as receitas atualizadas no motor Python */
   carregarClientes() {
     this.http.get<any>('http://127.0.0.1:8000/clientes').subscribe({
       next: (dados) => {
         this.clientes = dados.clientes;
         this.cdr.detectChanges(); 
       },
-      error: (erro) => this.mostrarToast('Falha ao conectar com o banco de clientes. O servidor está ligado?', '#dc3545')
+      error: (erro) => this.mostrarToast('Falha ao conectar com o banco de clientes.', '#dc3545')
     });
   }
 
-  /** Avalia as regras de negócio e envia o formulário validado para o Python */
   salvarCliente() {
     const nomeLimpo = this.novoNome.trim(); 
     const cpfLimpo = this.novoCpf.replace(/\D/g, ''); 
     const telefoneLimpo = this.novoTelefone.replace(/\D/g, ''); 
 
-    // Validação 1: Bloqueia envio se qualquer campo fundamental estiver vazio
     if (!nomeLimpo || !this.novoTelefone || !this.novoCpf || !this.novoEmail || !this.novoDataNascimento) {
-      this.mostrarToast('Por favor, preencha todos os campos, incluindo a Data de Nascimento.', '#dc3545');
+      this.mostrarToast('Por favor, preencha todos os campos.', '#dc3545');
       return; 
     }
-
-    // Validação 2: Auditoria Matemática de Comprimento
     if (nomeLimpo.length < 3) {
       this.mostrarToast('O nome do cliente deve ter no mínimo 3 letras.', '#dc3545');
       return;
@@ -134,14 +150,13 @@ export class AppComponent implements OnInit {
       return;
     }
     if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
-      this.mostrarToast('Telefone inválido! Digite o DDD e o número correto (10 ou 11 números).', '#ffc107');
+      this.mostrarToast('Telefone inválido!', '#ffc107');
       return;
     }
 
-    // Validação 3: Validador Universal de Formato de E-mail (Regex)
     const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
     if (!regexEmail.test(this.novoEmail)) {
-      this.mostrarToast('Por favor, digite um endereço de e-mail válido (ex: contato@empresa.com).', '#dc3545');
+      this.mostrarToast('E-mail inválido.', '#dc3545');
       return;
     }
 
@@ -153,9 +168,8 @@ export class AppComponent implements OnInit {
       data_nascimento: this.novoDataNascimento
     };
 
-    this.salvandoCliente = true; // Aciona a ampulheta do estado de carregamento
+    this.salvandoCliente = true; 
 
-    // Direciona para Rota PUT (Editar) ou POST (Novo)
     if (this.clienteEditandoId) {
       this.http.put<any>(`http://127.0.0.1:8000/clientes/${this.clienteEditandoId}`, dadosDoFormulario).subscribe({
         next: (resposta) => {
@@ -193,7 +207,6 @@ export class AppComponent implements OnInit {
     }
   }
 
-  /** Dispara a exclusão. O PostgreSQL cuidará de proteger clientes que possuem histórico de compras. */
   excluirCliente(id: number) {
     const confirmacao = confirm('Tem certeza que deseja excluir este cliente?');
     if (!confirmacao) return;
@@ -201,7 +214,7 @@ export class AppComponent implements OnInit {
     this.http.delete<any>(`http://127.0.0.1:8000/clientes/${id}`).subscribe({
       next: (resposta) => {
         if (resposta.erro) {
-          this.mostrarToast('Atenção: O banco bloqueou a exclusão! ' + resposta.erro, '#ffc107');
+          this.mostrarToast('Atenção: ' + resposta.erro, '#ffc107');
         } else {
           this.mostrarToast('Cliente excluído com sucesso!', '#28a745');
           this.carregarClientes();
@@ -211,12 +224,9 @@ export class AppComponent implements OnInit {
     });
   }
 
-
   // ==============================================================================
-  // 3. INTELIGÊNCIA COMERCIAL (DASHBOARD E CLASSIFICAÇÃO IA)
+  // INTELIGÊNCIA COMERCIAL E DASHBOARD
   // ==============================================================================
-
-  /** Busca os totais gerais (Dinheiro Faturado e Clientes Salvos) */
   carregarEstatisticas() {
     this.http.get<any>('http://127.0.0.1:8000/estatisticas').subscribe({
       next: (dados) => {
@@ -224,11 +234,10 @@ export class AppComponent implements OnInit {
         this.clientesReativados = dados.clientes_reativados;
         this.cdr.detectChanges(); 
       },
-      error: (erro) => this.mostrarToast('Falha ao calcular as estatísticas do painel.', '#dc3545')
+      error: (erro) => this.mostrarToast('Falha ao calcular as estatísticas.', '#dc3545')
     });
   }
 
-  /** Motor Local: Avalia o tempo de inatividade + faturamento para gerar Tags Estratégicas */
   classificarOportunidade(cliente: any): any {
     if (!cliente.ultima_compra || cliente.ultima_compra === 'Sem vendas') {
       return { texto: '🎯 Novo Lead', corFundo: '#e0f3ff', corTexto: '#004085' }; 
@@ -239,7 +248,6 @@ export class AppComponent implements OnInit {
     const diasInativos = Math.floor((hoje.getTime() - dataCompra.getTime()) / (1000 * 3600 * 24));
     const valor = cliente.valor_recuperado;
 
-    // Regras de negócio de Vendas e Marketing
     if (diasInativos > 90 && valor >= 400) {
       return { texto: '💎 Valioso em Risco', corFundo: '#f8d7da', corTexto: '#721c24' }; 
     } else if (diasInativos > 90) {
@@ -253,7 +261,6 @@ export class AppComponent implements OnInit {
     }
   }
 
-  /** Converte a data da última compra num Alerta Visual (Verde, Amarelo, Vermelho) */
   calcularRiscoCor(dataUltimaCompra: string): string {
     if (!dataUltimaCompra || dataUltimaCompra === 'Sem vendas') return 'transparent';
 
@@ -261,12 +268,11 @@ export class AppComponent implements OnInit {
     const hoje = new Date();
     const diasInativos = Math.floor((hoje.getTime() - dataCompra.getTime()) / (1000 * 3600 * 24));
 
-    if (diasInativos <= 30) return '#d4edda'; // Saudável
-    if (diasInativos <= 90) return '#fff3cd'; // Esfriando
-    return '#f8d7da'; // Crítico
+    if (diasInativos <= 30) return '#d4edda'; 
+    if (diasInativos <= 90) return '#fff3cd'; 
+    return '#f8d7da'; 
   }
 
-  /** Converte a data do banco em um texto legível contendo a passagem do tempo */
   exibirTextoDias(dataUltimaCompra: string): string {
     if (!dataUltimaCompra || dataUltimaCompra === 'Sem vendas') return 'Sem vendas';
 
@@ -277,15 +283,12 @@ export class AppComponent implements OnInit {
     return `${dataUltimaCompra} (${diasInativos} dias)`;
   }
 
-
   // ==============================================================================
-  // 4. MÓDULO FINANCEIRO E AUTOMAÇÃO (VENDAS E WHATSAPP)
+  // VENDAS E AUTOMAÇÃO
   // ==============================================================================
-
-  /** Grava um faturamento no banco e força a atualização do Dashboard e do Farol na mesma hora */
   salvarVenda() {
     if (!this.novaVendaValor || this.novaVendaValor <= 0) {
-      this.mostrarToast('Por favor, insira um valor válido maior que zero.', '#ffc107');
+      this.mostrarToast('Por favor, insira um valor válido.', '#ffc107');
       return;
     }
 
@@ -302,7 +305,7 @@ export class AppComponent implements OnInit {
         if (resposta.erro) {
           this.mostrarToast('Erro: ' + resposta.erro, '#dc3545');
         } else {
-          this.mostrarToast('Venda registrada com sucesso!', '#28a745');
+          this.mostrarToast('Venda registrada!', '#28a745');
           this.carregarClientes(); 
           this.carregarEstatisticas();
         }
@@ -311,11 +314,10 @@ export class AppComponent implements OnInit {
     });
   }
 
-  /** Monta um script comercial persuasivo baseado na Tag do cliente e abre o WhatsApp Web */
   abrirWhatsApp(cliente: any) {
     let telefoneLimpo = cliente.telefone.replace(/\D/g, '');
     if (telefoneLimpo.length === 10 || telefoneLimpo.length === 11) {
-      telefoneLimpo = '55' + telefoneLimpo; // Garante o código DDI do Brasil para a API da Meta
+      telefoneLimpo = '55' + telefoneLimpo;
     }
 
     let mensagem = '';
@@ -336,23 +338,18 @@ export class AppComponent implements OnInit {
     window.open(url, '_blank');
   }
 
-
   // ==============================================================================
-  // 5. FILTROS DA TABELA E CONTROLES DE INTERFACE (MODAIS E AVISOS)
+  // CONTROLES DE INTERFACE E FILTROS
   // ==============================================================================
-
-  /** Atualiza o estado da memória para o filtro selecionado no topo da tela */
   definirFiltro(cor: string) {
     this.filtroAtual = cor;
   }
 
-  /** Retorna apenas os clientes que batem com a cor do filtro escolhido */
   obterClientesFiltrados() {
     if (this.filtroAtual === 'Todos') return this.clientes;
     return this.clientes.filter(cliente => this.calcularRiscoCor(cliente.ultima_compra) === this.filtroAtual);
   }
 
-  /** Transfere os dados do cliente para a memória do formulário e abre o pop-up */
   editarCliente(cliente: any) {
     this.clienteEditandoId = cliente.id;
     this.novoNome = cliente.nome;
@@ -394,7 +391,6 @@ export class AppComponent implements OnInit {
     this.novaVendaValor = null;
   }
 
-  /** Dispara uma barra flutuante (Toast) na tela que desaparece automaticamente após 3.5s */
   mostrarToast(mensagem: string, cor: string = '#28a745') { 
     this.toastMensagem = mensagem;
     this.toastCor = cor;
