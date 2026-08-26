@@ -47,10 +47,12 @@ def listar_clientes():
         conexao = conectar_banco()
         cursor = conexao.cursor()
         
+        # ATUALIZAÇÃO 0.8: Adicionamos o SUM(v.valor) para calcular a receita de cada cliente
         comando_sql = """
             SELECT 
                 c.id, c.nome, c.telefone, c.cpf, c.email, c.data_nascimento,
-                MAX(v.data_da_venda) AS ultima_compra
+                MAX(v.data_da_venda) AS ultima_compra,
+                COALESCE(SUM(v.valor), 0) AS valor_recuperado
             FROM clientes c
             LEFT JOIN vendas v ON c.id = v.cliente_id
             GROUP BY c.id, c.nome, c.telefone, c.cpf, c.email, c.data_nascimento
@@ -73,7 +75,8 @@ def listar_clientes():
                 "cpf": cliente[3] if cliente[3] else "Não informado", 
                 "email": cliente[4] if cliente[4] else "Não informado",
                 "data_nascimento": nascimento_formatado,
-                "ultima_compra": data_formatada 
+                "ultima_compra": data_formatada,
+                "valor_recuperado": float(cliente[7]) # Enviando o dinheiro recuperado para o Angular
             })
             
         return {"clientes": lista_formatada}
@@ -192,3 +195,28 @@ def registrar_venda(venda: NovaVenda):
         return {"mensagem": "Venda registrada com sucesso!"}
     except Exception as erro:
         return {"erro": f"Erro ao registrar venda: {erro}"}
+
+    # ROTA 6: Dashboard de Estatísticas (Receita Total)
+@app.get("/estatisticas")
+def obter_estatisticas():
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+
+        # 1. Soma todo o dinheiro recuperado pela empresa
+        cursor.execute("SELECT COALESCE(SUM(valor), 0) FROM vendas;")
+        total_recuperado = cursor.fetchone()[0]
+
+        # 2. Conta quantos clientes únicos voltaram a comprar
+        cursor.execute("SELECT COUNT(DISTINCT cliente_id) FROM vendas;")
+        clientes_reativados = cursor.fetchone()[0]
+
+        cursor.close()
+        conexao.close()
+
+        return {
+            "total_recuperado": float(total_recuperado),
+            "clientes_reativados": int(clientes_reativados)
+        }
+    except Exception as erro:
+        return {"erro": f"Erro ao buscar estatísticas: {erro}"}

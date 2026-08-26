@@ -27,11 +27,15 @@ export class AppComponent implements OnInit {
   
   // Variável que memoriza qual filtro está ativo (Versão 0.7)
   filtroAtual: string = 'Todos';
+  // Memórias do Dashboard de Estatísticas (Versão 0.8)
+  totalRecuperado: number = 0;
+  clientesReativados: number = 0;
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.carregarClientes();
+    this.carregarEstatisticas();
   }
 
   // --- LÓGICA DE FORMATAÇÃO (Máscaras de Limpeza) ---
@@ -244,7 +248,8 @@ export class AppComponent implements OnInit {
         if (resposta.erro) {
           alert('Erro: ' + resposta.erro);
         } else {
-          this.carregarClientes(); 
+          this.carregarClientes();
+          this.carregarEstatisticas(); 
         }
       },
       error: (erro) => alert('Falha ao registrar venda.')
@@ -288,5 +293,16 @@ export class AppComponent implements OnInit {
     }
     // Filtra a lista comparando a cor do farol do cliente com a cor do filtro clicado
     return this.clientes.filter(cliente => this.calcularRiscoCor(cliente.ultima_compra) === this.filtroAtual);
+  }
+  // --- LÓGICA DO DASHBOARD DE RECEITA (VERSÃO 0.8) ---
+  carregarEstatisticas() {
+    this.http.get<any>('http://127.0.0.1:8000/estatisticas').subscribe({
+      next: (dados) => {
+        this.totalRecuperado = dados.total_recuperado;
+        this.clientesReativados = dados.clientes_reativados;
+        this.cdr.detectChanges(); 
+      },
+      error: (erro) => console.error('Erro ao buscar estatísticas:', erro)
+    });
   }
 }
