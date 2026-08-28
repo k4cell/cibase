@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "painel-tixa",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start", "--prefix", "C:\\Users\\Cassiel\\OneDrive\\Área de Trabalho\\projeto_tixa\\frontend\\painel-tixa"],
+      "port": 4200
+    }
+  ]
+}

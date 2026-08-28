@@ -27,6 +27,8 @@ export class AppComponent implements OnInit {
   clienteVendaNome: string = '';
   novaVendaValor: number | null = null;
 
+  clienteDetalhe: any = null;
+
   mostrarModalCadastro: boolean = false;
   salvandoCliente: boolean = false;
   filtroAtual: string = 'Todos';
@@ -377,6 +379,14 @@ export class AppComponent implements OnInit {
     this.novoEmail = '';
     this.novoDataNascimento = '';
     this.clienteEditandoId = null;
+  }
+
+  abrirFichaCliente(cliente: any) {
+    this.clienteDetalhe = cliente;
+  }
+
+  fecharFichaCliente() {
+    this.clienteDetalhe = null;
   }
 
   abrirModalVenda(cliente: any) {
