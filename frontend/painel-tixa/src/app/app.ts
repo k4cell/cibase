@@ -27,6 +27,9 @@ export class AppComponent implements OnInit {
   clienteVendaNome: string = '';
   novaVendaValor: number | null = null;
 
+  // Controle do menu de navegação (abas)
+  abaAtiva: string = 'recuperacao';
+
   clienteDetalhe: any = null;
 
   mostrarModalCadastro: boolean = false;

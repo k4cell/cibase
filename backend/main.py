@@ -57,7 +57,7 @@ def fazer_login(credenciais: CredenciaisLogin):
     ROTA DE SEGURANÇA: Valida o acesso ao painel.
     MVP: Credenciais de Administrador Único fixadas no código.
     """
-    EMAIL_ADMIN = "adm@gmail.com"
+    EMAIL_ADMIN = "adm"
     SENHA_ADMIN = "123"
 
     if credenciais.email == EMAIL_ADMIN and credenciais.senha == SENHA_ADMIN:
