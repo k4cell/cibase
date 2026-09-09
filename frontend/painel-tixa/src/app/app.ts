@@ -15,7 +15,8 @@ export class AppComponent implements OnInit {
   // MEMÓRIAS DE ESTADO (VARIÁVEIS GLOBAIS)
   // ==============================================================================
   clientes: any[] = [];
-  
+  clientesArquivados: any[] = [];
+
   novoNome: string = '';
   novoTelefone: string = '';
   novoCpf: string = ''; 
@@ -31,6 +32,8 @@ export class AppComponent implements OnInit {
   abaAtiva: string = 'recuperacao';
 
   clienteDetalhe: any = null;
+  vendasClienteDetalhe: any[] = [];
+  carregandoVendasDetalhe: boolean = false;
 
   mostrarModalCadastro: boolean = false;
   salvandoCliente: boolean = false;
@@ -39,6 +42,7 @@ export class AppComponent implements OnInit {
   toastMensagem: string = '';
   toastCor: string = '';
   toastVisivel: boolean = false;
+  toastTimeoutId: any = null;
 
   totalRecuperado: number = 0;
   clientesReativados: number = 0;
@@ -48,6 +52,18 @@ export class AppComponent implements OnInit {
   loginEmail: string = '';
   loginSenha: string = '';
   carregandoLogin: boolean = false;
+
+  // Importação de clientes via planilha (CSV ou Excel)
+  importandoPlanilha: boolean = false;
+  importandoVendas: boolean = false;
+
+  // Arquivamento de cliente (confirmação via modal, não mais confirm() nativo)
+  clienteParaArquivar: any = null;
+  arquivandoCliente: boolean = false;
+
+  // Exclusão permanente (a partir da aba Arquivados)
+  clienteParaExcluirPermanente: any = null;
+  excluindoPermanente: boolean = false;
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
 
@@ -80,6 +96,7 @@ export class AppComponent implements OnInit {
           // Somente AGORA buscamos o dinheiro e os clientes no banco de dados!
           this.carregarEstatisticas();
           this.carregarClientes();
+          this.carregarClientesArquivados();
         }
       },
       error: (erro) => {
@@ -131,9 +148,19 @@ export class AppComponent implements OnInit {
     this.http.get<any>('http://127.0.0.1:8000/clientes').subscribe({
       next: (dados) => {
         this.clientes = dados.clientes;
-        this.cdr.detectChanges(); 
+        this.cdr.detectChanges();
       },
       error: (erro) => this.mostrarToast('Falha ao conectar com o banco de clientes.', '#dc3545')
+    });
+  }
+
+  carregarClientesArquivados() {
+    this.http.get<any>('http://127.0.0.1:8000/clientes/arquivados').subscribe({
+      next: (dados) => {
+        this.clientesArquivados = dados.clientes;
+        this.cdr.detectChanges();
+      },
+      error: (erro) => this.mostrarToast('Falha ao conectar com o banco de arquivados.', '#dc3545')
     });
   }
 
@@ -212,20 +239,191 @@ export class AppComponent implements OnInit {
     }
   }
 
-  excluirCliente(id: number) {
-    const confirmacao = confirm('Tem certeza que deseja excluir este cliente?');
-    if (!confirmacao) return;
+  importarPlanilha(event: any) {
+    const arquivo: File = event.target.files[0];
+    if (!arquivo) return;
+
+    const nomeArquivo = arquivo.name.toLowerCase();
+    if (!nomeArquivo.endsWith('.csv') && !nomeArquivo.endsWith('.xlsx')) {
+      this.mostrarToast('Selecione um arquivo .csv ou .xlsx válido.', '#dc3545');
+      event.target.value = '';
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('arquivo', arquivo);
+
+    this.importandoPlanilha = true;
+
+    this.http.post<any>('http://127.0.0.1:8000/importar-clientes', formData).subscribe({
+      next: (resposta) => {
+        this.importandoPlanilha = false;
+        event.target.value = '';
+
+        if (resposta.erro) {
+          this.mostrarToast(resposta.erro, '#dc3545');
+          return;
+        }
+
+        const inseridos = resposta.clientes_inseridos;
+        const duplicados = resposta.clientes_ignorados_por_duplicidade;
+        const incompletos = resposta.clientes_ignorados_por_dados_incompletos || 0;
+        const vendasInseridas = resposta.vendas_inseridas || 0;
+        const vendasSemCliente = resposta.vendas_ignoradas_sem_cliente_correspondente || 0;
+
+        const partes: string[] = [];
+        if (inseridos > 0) partes.push(inseridos === 1 ? '1 cliente novo cadastrado' : `${inseridos} clientes novos cadastrados`);
+        if (duplicados > 0) partes.push(duplicados === 1 ? '1 já estava cadastrado (CPF repetido)' : `${duplicados} já estavam cadastrados (CPF repetido)`);
+        if (incompletos > 0) partes.push(incompletos === 1 ? '1 linha ignorada por dados incompletos' : `${incompletos} linhas ignoradas por dados incompletos`);
+        if (vendasInseridas > 0) partes.push(vendasInseridas === 1 ? '1 venda importada' : `${vendasInseridas} vendas importadas`);
+        if (vendasSemCliente > 0) partes.push(vendasSemCliente === 1 ? '1 venda ignorada (CPF não encontrado)' : `${vendasSemCliente} vendas ignoradas (CPF não encontrado)`);
+
+        const mensagem = partes.length > 0 ? partes.join('. ') + '.' : 'Nenhum cliente encontrado no arquivo.';
+        const cor = (inseridos > 0 || vendasInseridas > 0) ? '#28a745' : '#ffc107';
+
+        this.mostrarToast(mensagem, cor);
+        this.carregarClientes();
+        this.carregarEstatisticas();
+      },
+      error: (erro) => {
+        this.importandoPlanilha = false;
+        event.target.value = '';
+        this.mostrarToast('Falha ao importar a planilha.', '#dc3545');
+      }
+    });
+  }
+
+  importarVendas(event: any) {
+    const arquivo: File = event.target.files[0];
+    if (!arquivo) return;
+
+    const nomeArquivo = arquivo.name.toLowerCase();
+    if (!nomeArquivo.endsWith('.csv') && !nomeArquivo.endsWith('.xlsx')) {
+      this.mostrarToast('Selecione um arquivo .csv ou .xlsx válido.', '#dc3545');
+      event.target.value = '';
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('arquivo', arquivo);
+
+    this.importandoVendas = true;
+
+    this.http.post<any>('http://127.0.0.1:8000/importar-vendas', formData).subscribe({
+      next: (resposta) => {
+        this.importandoVendas = false;
+        event.target.value = '';
+
+        if (resposta.erro) {
+          this.mostrarToast(resposta.erro, '#dc3545');
+          return;
+        }
+
+        const inseridas = resposta.vendas_inseridas;
+        const semCliente = resposta.vendas_ignoradas_sem_cliente_correspondente || 0;
+        const invalidas = resposta.vendas_ignoradas_por_dados_invalidos || 0;
+
+        const partes: string[] = [];
+        if (inseridas > 0) partes.push(inseridas === 1 ? '1 venda importada' : `${inseridas} vendas importadas`);
+        if (semCliente > 0) partes.push(semCliente === 1 ? '1 venda ignorada (CPF não encontrado na base)' : `${semCliente} vendas ignoradas (CPF não encontrado na base)`);
+        if (invalidas > 0) partes.push(invalidas === 1 ? '1 linha ignorada por dados inválidos' : `${invalidas} linhas ignoradas por dados inválidos`);
+
+        const mensagem = partes.length > 0 ? partes.join('. ') + '.' : 'Nenhuma venda encontrada no arquivo.';
+        this.mostrarToast(mensagem, inseridas > 0 ? '#28a745' : '#ffc107');
+
+        this.carregarClientes();
+        this.carregarEstatisticas();
+      },
+      error: (erro) => {
+        this.importandoVendas = false;
+        event.target.value = '';
+        this.mostrarToast('Falha ao importar a planilha de vendas.', '#dc3545');
+      }
+    });
+  }
+
+  abrirConfirmacaoArquivar(cliente: any) {
+    this.clienteParaArquivar = cliente;
+  }
+
+  fecharConfirmacaoArquivar() {
+    this.clienteParaArquivar = null;
+  }
+
+  confirmarArquivamento() {
+    if (!this.clienteParaArquivar) return;
+    const id = this.clienteParaArquivar.id;
+
+    this.arquivandoCliente = true;
 
     this.http.delete<any>(`http://127.0.0.1:8000/clientes/${id}`).subscribe({
+      next: (resposta) => {
+        this.arquivandoCliente = false;
+        this.clienteParaArquivar = null;
+
+        if (resposta.erro) {
+          this.mostrarToast('Atenção: ' + resposta.erro, '#ffc107');
+        } else {
+          this.mostrarToast('Cliente arquivado com sucesso!', '#28a745');
+          this.carregarClientes();
+          this.carregarClientesArquivados();
+        }
+      },
+      error: (erro) => {
+        this.arquivandoCliente = false;
+        this.clienteParaArquivar = null;
+        this.mostrarToast('Falha ao arquivar cliente.', '#dc3545');
+      }
+    });
+  }
+
+  reativarCliente(cliente: any) {
+    this.http.put<any>(`http://127.0.0.1:8000/clientes/${cliente.id}/reativar`, {}).subscribe({
       next: (resposta) => {
         if (resposta.erro) {
           this.mostrarToast('Atenção: ' + resposta.erro, '#ffc107');
         } else {
-          this.mostrarToast('Cliente excluído com sucesso!', '#28a745');
+          this.mostrarToast('Cliente reativado com sucesso!', '#28a745');
           this.carregarClientes();
+          this.carregarClientesArquivados();
         }
       },
-      error: (erro) => this.mostrarToast('Falha ao excluir cliente.', '#dc3545')
+      error: (erro) => this.mostrarToast('Falha ao reativar cliente.', '#dc3545')
+    });
+  }
+
+  abrirConfirmacaoExclusaoPermanente(cliente: any) {
+    this.clienteParaExcluirPermanente = cliente;
+  }
+
+  fecharConfirmacaoExclusaoPermanente() {
+    this.clienteParaExcluirPermanente = null;
+  }
+
+  confirmarExclusaoPermanente() {
+    if (!this.clienteParaExcluirPermanente) return;
+    const id = this.clienteParaExcluirPermanente.id;
+
+    this.excluindoPermanente = true;
+
+    this.http.delete<any>(`http://127.0.0.1:8000/clientes/${id}/permanente`).subscribe({
+      next: (resposta) => {
+        this.excluindoPermanente = false;
+        this.clienteParaExcluirPermanente = null;
+
+        if (resposta.erro) {
+          this.mostrarToast('Atenção: ' + resposta.erro, '#ffc107');
+        } else {
+          this.mostrarToast('Cliente excluído permanentemente.', '#28a745');
+          this.carregarClientesArquivados();
+          this.carregarEstatisticas();
+        }
+      },
+      error: (erro) => {
+        this.excluindoPermanente = false;
+        this.clienteParaExcluirPermanente = null;
+        this.mostrarToast('Falha ao excluir cliente permanentemente.', '#dc3545');
+      }
     });
   }
 
@@ -386,10 +584,25 @@ export class AppComponent implements OnInit {
 
   abrirFichaCliente(cliente: any) {
     this.clienteDetalhe = cliente;
+    this.vendasClienteDetalhe = [];
+    this.carregandoVendasDetalhe = true;
+
+    this.http.get<any>(`http://127.0.0.1:8000/clientes/${cliente.id}/vendas`).subscribe({
+      next: (dados) => {
+        this.carregandoVendasDetalhe = false;
+        this.vendasClienteDetalhe = dados.vendas || [];
+        this.cdr.detectChanges();
+      },
+      error: (erro) => {
+        this.carregandoVendasDetalhe = false;
+        this.mostrarToast('Falha ao carregar histórico de compras.', '#dc3545');
+      }
+    });
   }
 
   fecharFichaCliente() {
     this.clienteDetalhe = null;
+    this.vendasClienteDetalhe = [];
   }
 
   abrirModalVenda(cliente: any) {
@@ -404,15 +617,31 @@ export class AppComponent implements OnInit {
     this.novaVendaValor = null;
   }
 
-  mostrarToast(mensagem: string, cor: string = '#28a745') { 
+  mostrarToast(mensagem: string, cor: string = '#28a745') {
+    if (this.toastTimeoutId) {
+      clearTimeout(this.toastTimeoutId);
+    }
+
     this.toastMensagem = mensagem;
     this.toastCor = cor;
     this.toastVisivel = true;
-    this.cdr.detectChanges(); 
+    this.cdr.detectChanges();
 
-    setTimeout(() => {
+    // Mensagens mais longas ficam visíveis por mais tempo (mín. 3,5s, máx. 12s).
+    const duracao = Math.min(12000, Math.max(3500, mensagem.length * 80));
+
+    this.toastTimeoutId = setTimeout(() => {
       this.toastVisivel = false;
+      this.toastTimeoutId = null;
       this.cdr.detectChanges();
-    }, 3500);
+    }, duracao);
+  }
+
+  fecharToast() {
+    if (this.toastTimeoutId) {
+      clearTimeout(this.toastTimeoutId);
+      this.toastTimeoutId = null;
+    }
+    this.toastVisivel = false;
   }
 }

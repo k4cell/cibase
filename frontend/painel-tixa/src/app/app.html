@@ -13,7 +13,13 @@
       <path d="M12 17h.01"></path>
     </svg>
   </span>
-  <span>{{ toastMensagem }}</span>
+  <span class="tx-toast-message">{{ toastMensagem }}</span>
+  <button class="tx-toast-close" (click)="fecharToast()" title="Fechar" aria-label="Fechar aviso">
+    <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M18 6 6 18"></path>
+      <path d="m6 6 12 12"></path>
+    </svg>
+  </button>
 </div>
 
 
@@ -193,6 +199,14 @@
         </svg>
         Clientes em Geral
       </button>
+      <button class="tx-tab" [class.is-active]="abaAtiva === 'arquivados'" (click)="abaAtiva = 'arquivados'">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+          <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+          <path d="M10 12h4"></path>
+        </svg>
+        Arquivados
+      </button>
     </nav>
 
     <!-- MODAL A: Cadastro e Edição -->
@@ -292,9 +306,84 @@
       </div>
     </div>
 
+    <!-- MODAL B2: Confirmar Arquivamento de Cliente -->
+    <div *ngIf="clienteParaArquivar" class="tx-modal-backdrop">
+      <div class="tx-modal-card tx-modal-card--sm">
+        <div class="tx-modal-header">
+          <div class="tx-modal-header-icon">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+              <path d="M10 12h4"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="tx-modal-title">Arquivar cliente</h3>
+            <p class="tx-modal-caption">Ele sai das listas, mas o histórico de vendas é mantido.</p>
+          </div>
+        </div>
+
+        <div class="tx-sale-body">
+          <div class="tx-sale-client-chip">
+            <span class="tx-avatar">{{ clienteParaArquivar.nome ? clienteParaArquivar.nome.charAt(0).toUpperCase() : '?' }}</span>
+            {{ clienteParaArquivar.nome }}
+          </div>
+          <p class="tx-sale-hint">Tem certeza que deseja arquivar este cliente?</p>
+        </div>
+
+        <div class="tx-sale-footer">
+          <button class="tx-btn tx-btn-secondary" (click)="fecharConfirmacaoArquivar()" [disabled]="arquivandoCliente">Cancelar</button>
+          <button class="tx-btn tx-btn-success" (click)="confirmarArquivamento()" [disabled]="arquivandoCliente">
+            <span *ngIf="arquivandoCliente" class="tx-spinner"></span>
+            {{ arquivandoCliente ? 'Arquivando...' : 'Confirmar Arquivamento' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL B3: Confirmar Exclusão Permanente -->
+    <div *ngIf="clienteParaExcluirPermanente" class="tx-modal-backdrop">
+      <div class="tx-modal-card tx-modal-card--sm">
+        <div class="tx-modal-header">
+          <div class="tx-modal-header-icon tx-modal-header-icon--danger">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </div>
+          <div>
+            <h3 class="tx-modal-title">Excluir permanentemente</h3>
+            <p class="tx-modal-caption">Essa ação não pode ser desfeita.</p>
+          </div>
+        </div>
+
+        <div class="tx-sale-body">
+          <div class="tx-sale-client-chip">
+            <span class="tx-avatar">{{ clienteParaExcluirPermanente.nome ? clienteParaExcluirPermanente.nome.charAt(0).toUpperCase() : '?' }}</span>
+            {{ clienteParaExcluirPermanente.nome }}
+          </div>
+          <p class="tx-sale-hint">
+            O cliente e todo o seu histórico de vendas (R$ {{ clienteParaExcluirPermanente.valor_recuperado.toFixed(2) }}) serão apagados para sempre.
+            A receita total recuperada do painel será reduzida nesse valor.
+          </p>
+        </div>
+
+        <div class="tx-sale-footer">
+          <button class="tx-btn tx-btn-secondary" (click)="fecharConfirmacaoExclusaoPermanente()" [disabled]="excluindoPermanente">Cancelar</button>
+          <button class="tx-btn tx-btn-danger" (click)="confirmarExclusaoPermanente()" [disabled]="excluindoPermanente">
+            <span *ngIf="excluindoPermanente" class="tx-spinner"></span>
+            {{ excluindoPermanente ? 'Excluindo...' : 'Excluir Permanentemente' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL C: Ficha Completa do Cliente -->
     <div *ngIf="clienteDetalhe" class="tx-modal-backdrop">
-      <div class="tx-modal-card tx-modal-card--sm">
+      <div class="tx-modal-card tx-modal-card--lg">
         <div class="tx-modal-header">
           <div class="tx-avatar tx-avatar--lg">{{ clienteDetalhe.nome ? clienteDetalhe.nome.charAt(0).toUpperCase() : '?' }}</div>
           <div>
@@ -304,36 +393,52 @@
         </div>
 
         <div class="tx-ficha-body">
-          <span class="tx-badge" [ngStyle]="{'background-color': classificarOportunidade(clienteDetalhe).corFundo, 'color': classificarOportunidade(clienteDetalhe).corTexto}">
-            {{ classificarOportunidade(clienteDetalhe).texto }}
-          </span>
+          <div class="tx-ficha-columns">
+            <div class="tx-ficha-col">
+              <span class="tx-badge" [ngStyle]="{'background-color': classificarOportunidade(clienteDetalhe).corFundo, 'color': classificarOportunidade(clienteDetalhe).corTexto}">
+                {{ classificarOportunidade(clienteDetalhe).texto }}
+              </span>
 
-          <dl class="tx-ficha-list">
-            <div class="tx-ficha-row">
-              <dt>Telefone</dt>
-              <dd>{{ clienteDetalhe.telefone }}</dd>
+              <dl class="tx-ficha-list">
+                <div class="tx-ficha-row">
+                  <dt>Telefone</dt>
+                  <dd>{{ clienteDetalhe.telefone }}</dd>
+                </div>
+                <div class="tx-ficha-row">
+                  <dt>E-mail</dt>
+                  <dd>{{ clienteDetalhe.email }}</dd>
+                </div>
+                <div class="tx-ficha-row">
+                  <dt>CPF</dt>
+                  <dd>{{ clienteDetalhe.cpf }}</dd>
+                </div>
+                <div class="tx-ficha-row">
+                  <dt>Nascimento</dt>
+                  <dd>{{ clienteDetalhe.data_nascimento }}</dd>
+                </div>
+                <div class="tx-ficha-row">
+                  <dt>Última compra</dt>
+                  <dd>{{ exibirTextoDias(clienteDetalhe.ultima_compra) }}</dd>
+                </div>
+                <div class="tx-ficha-row">
+                  <dt>Receita recuperada</dt>
+                  <dd class="tx-revenue-cell">R$ {{ clienteDetalhe.valor_recuperado.toFixed(2) }}</dd>
+                </div>
+              </dl>
             </div>
-            <div class="tx-ficha-row">
-              <dt>E-mail</dt>
-              <dd>{{ clienteDetalhe.email }}</dd>
+
+            <div class="tx-ficha-col">
+              <h4 class="tx-ficha-vendas-title">Histórico de compras</h4>
+              <p *ngIf="carregandoVendasDetalhe" class="tx-sale-hint">Carregando...</p>
+              <ul *ngIf="!carregandoVendasDetalhe && vendasClienteDetalhe.length > 0" class="tx-vendas-list">
+                <li *ngFor="let venda of vendasClienteDetalhe" class="tx-vendas-item">
+                  <span>{{ venda.data_da_venda }}</span>
+                  <span class="tx-revenue-cell">R$ {{ venda.valor.toFixed(2) }}</span>
+                </li>
+              </ul>
+              <p *ngIf="!carregandoVendasDetalhe && vendasClienteDetalhe.length === 0" class="tx-sale-hint">Nenhuma compra registrada ainda.</p>
             </div>
-            <div class="tx-ficha-row">
-              <dt>CPF</dt>
-              <dd>{{ clienteDetalhe.cpf }}</dd>
-            </div>
-            <div class="tx-ficha-row">
-              <dt>Nascimento</dt>
-              <dd>{{ clienteDetalhe.data_nascimento }}</dd>
-            </div>
-            <div class="tx-ficha-row">
-              <dt>Última compra</dt>
-              <dd>{{ exibirTextoDias(clienteDetalhe.ultima_compra) }}</dd>
-            </div>
-            <div class="tx-ficha-row">
-              <dt>Receita recuperada</dt>
-              <dd class="tx-revenue-cell">R$ {{ clienteDetalhe.valor_recuperado.toFixed(2) }}</dd>
-            </div>
-          </dl>
+          </div>
         </div>
 
         <div class="tx-modal-footer">
@@ -442,6 +547,7 @@
               <th>Perfil Comercial</th>
               <th>Contato / WhatsApp</th>
               <th style="text-align: center;">Última Compra</th>
+              <th style="text-align: center;">Compras</th>
               <th>Receita</th>
               <th style="text-align: center;">Ações</th>
             </tr>
@@ -484,6 +590,8 @@
                 </span>
               </td>
 
+              <td style="text-align: center;">{{ cliente.total_compras }}</td>
+
               <td class="tx-revenue-cell">R$ {{ cliente.valor_recuperado.toFixed(2) }}</td>
 
               <td>
@@ -509,13 +617,11 @@
                     </svg>
                     Editar
                   </button>
-                  <button class="tx-action-btn tx-action-btn--delete" (click)="excluirCliente(cliente.id)" title="Excluir cliente">
+                  <button class="tx-action-btn tx-action-btn--delete" (click)="abrirConfirmacaoArquivar(cliente)" title="Arquivar cliente">
                     <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M3 6h18"></path>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      <line x1="10" y1="11" x2="10" y2="17"></line>
-                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                      <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                      <path d="M10 12h4"></path>
                     </svg>
                   </button>
                 </div>
@@ -523,7 +629,7 @@
             </tr>
 
             <tr *ngIf="obterClientesFiltrados().length === 0">
-              <td colspan="7" class="tx-empty-state">
+              <td colspan="8" class="tx-empty-state">
                 <div class="tx-empty-state-icon">
                   <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
@@ -623,13 +729,35 @@
 
       <div class="tx-toolbar">
         <p class="tx-toolbar-info">{{ clientes.length }} cliente(s) cadastrado(s) na base.</p>
-        <button class="tx-btn tx-btn-primary" (click)="abrirModalCadastro()">
-          <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 12h14"></path>
-            <path d="M12 5v14"></path>
-          </svg>
-          Novo Cliente
-        </button>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="file" id="tx-csv-input" accept=".csv,.xlsx" style="display:none" (change)="importarPlanilha($event)" [disabled]="importandoPlanilha">
+          <label for="tx-csv-input" class="tx-btn tx-btn-secondary" [style.opacity]="importandoPlanilha ? 0.6 : 1" [style.pointer-events]="importandoPlanilha ? 'none' : 'auto'">
+            <span *ngIf="importandoPlanilha" class="tx-spinner"></span>
+            <svg *ngIf="!importandoPlanilha" class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            {{ importandoPlanilha ? 'Importando...' : 'Importar Planilha' }}
+          </label>
+          <input type="file" id="tx-vendas-input" accept=".csv,.xlsx" style="display:none" (change)="importarVendas($event)" [disabled]="importandoVendas">
+          <label for="tx-vendas-input" class="tx-btn tx-btn-secondary" title="Importar vendas de clientes já cadastrados (casa por CPF)" [style.opacity]="importandoVendas ? 0.6 : 1" [style.pointer-events]="importandoVendas ? 'none' : 'auto'">
+            <span *ngIf="importandoVendas" class="tx-spinner"></span>
+            <svg *ngIf="!importandoVendas" class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            {{ importandoVendas ? 'Importando...' : 'Importar Vendas' }}
+          </label>
+          <button class="tx-btn tx-btn-primary" (click)="abrirModalCadastro()">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14"></path>
+              <path d="M12 5v14"></path>
+            </svg>
+            Novo Cliente
+          </button>
+        </div>
       </div>
 
       <div class="tx-table-card">
@@ -700,13 +828,11 @@
                       </svg>
                       Editar
                     </button>
-                    <button class="tx-action-btn tx-action-btn--delete" (click)="excluirCliente(cliente.id)" title="Excluir cliente">
+                    <button class="tx-action-btn tx-action-btn--delete" (click)="abrirConfirmacaoArquivar(cliente)" title="Arquivar cliente">
                       <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M3 6h18"></path>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                        <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                        <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                        <path d="M10 12h4"></path>
                       </svg>
                     </button>
                   </div>
@@ -734,6 +860,99 @@
 
     </div>
     <!-- ========================== FIM DA ABA 3 ========================== -->
+
+
+    <!-- ============================ ABA 4: ARQUIVADOS ============================ -->
+    <div *ngIf="abaAtiva === 'arquivados'">
+
+      <div class="tx-page-header">
+        <h1 class="tx-page-title">Arquivados</h1>
+        <p class="tx-page-subtitle">Clientes removidos das listas ativas. O histórico de vendas é mantido até a exclusão permanente.</p>
+      </div>
+
+      <div class="tx-toolbar">
+        <p class="tx-toolbar-info">{{ clientesArquivados.length }} cliente(s) arquivado(s).</p>
+      </div>
+
+      <div class="tx-table-card">
+        <div class="tx-table-head">
+          <h2>Clientes arquivados</h2>
+          <span class="tx-table-count">{{ clientesArquivados.length }} registro(s)</span>
+        </div>
+
+        <div class="tx-table-scroll">
+          <table class="tx-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>E-mail</th>
+                <th>CPF</th>
+                <th>Telefone</th>
+                <th>Receita histórica</th>
+                <th style="text-align: center;">Ações</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr *ngFor="let cliente of clientesArquivados">
+                <td class="tx-id-cell">#{{ cliente.id }}</td>
+
+                <td>
+                  <div class="tx-client-cell">
+                    <div class="tx-avatar">{{ cliente.nome ? cliente.nome.charAt(0).toUpperCase() : '?' }}</div>
+                    <span class="tx-client-name">{{ cliente.nome }}</span>
+                  </div>
+                </td>
+
+                <td class="tx-cell-muted">{{ cliente.email }}</td>
+                <td class="tx-cell-muted">{{ cliente.cpf }}</td>
+                <td class="tx-cell-muted">{{ cliente.telefone }}</td>
+                <td class="tx-revenue-cell">R$ {{ cliente.valor_recuperado.toFixed(2) }}</td>
+
+                <td>
+                  <div class="tx-actions-cell">
+                    <button class="tx-action-btn tx-action-btn--edit" (click)="reativarCliente(cliente)" title="Reativar cliente">
+                      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                      </svg>
+                      Reativar
+                    </button>
+                    <button class="tx-action-btn tx-action-btn--delete" (click)="abrirConfirmacaoExclusaoPermanente(cliente)" title="Excluir permanentemente">
+                      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                      Excluir
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr *ngIf="clientesArquivados.length === 0">
+                <td colspan="7" class="tx-empty-state">
+                  <div class="tx-empty-state-icon">
+                    <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                      <path d="M10 12h4"></path>
+                    </svg>
+                  </div>
+                  <div class="tx-empty-state-title">Nenhum cliente arquivado</div>
+                  <div class="tx-empty-state-subtitle">Clientes arquivados na aba "Clientes em Geral" aparecem aqui.</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <!-- ========================== FIM DA ABA 4 ========================== -->
 
   </div>
 </div>

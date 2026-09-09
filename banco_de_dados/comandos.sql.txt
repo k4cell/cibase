@@ -2,8 +2,13 @@
 CREATE TABLE clientes (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
-    telefone VARCHAR(20)
+    telefone VARCHAR(20),
+    ativo BOOLEAN NOT NULL DEFAULT TRUE
 );
+
+-- Migração (v0.10.1): "excluir cliente" virou arquivamento lógico, para não
+-- esbarrar na FK de vendas.cliente_id e não perder o histórico de receita.
+-- ALTER TABLE clientes ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE;
 
 -- Criando a tabela de Vendas
 CREATE TABLE vendas (
