@@ -6,7 +6,7 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import psycopg2
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # ==============================================================================
 # CONFIGURAÇÕES INICIAIS DA API (MOTOR TIXA)
@@ -40,6 +40,13 @@ class CredenciaisLogin(BaseModel):
     email: str
     senha: str
 
+class ConfiguracoesAtualizacao(BaseModel):
+    """ Régua de relacionamento: em quantos dias sem comprar um cliente vira
+    "Atenção" e depois "Risco Alto". Configurável porque o ciclo de retorno
+    varia muito por nicho (ex: estética ~30 dias, oficina/automotivo ~180 dias). """
+    dias_atencao: int
+    dias_risco: int
+
 # ==============================================================================
 # CONEXÃO COM O BANCO DE DADOS
 # ==============================================================================
@@ -68,6 +75,57 @@ def fazer_login(credenciais: CredenciaisLogin):
         return {"mensagem": "Login efetuado com sucesso!"}
     else:
         return {"erro": "E-mail ou senha incorretos. Acesso negado."}
+
+# ==============================================================================
+# CONFIGURAÇÕES DO NEGÓCIO (régua de relacionamento / farol de risco)
+# ==============================================================================
+@app.get("/configuracoes")
+def obter_configuracoes():
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+        cursor.execute("SELECT dias_atencao, dias_risco FROM configuracoes ORDER BY id LIMIT 1;")
+        linha = cursor.fetchone()
+        cursor.close()
+        conexao.close()
+
+        if not linha:
+            return {"dias_atencao": 30, "dias_risco": 90}
+        return {"dias_atencao": linha[0], "dias_risco": linha[1]}
+    except Exception as erro:
+        return {"erro": f"Erro ao buscar configurações: {erro}"}
+
+@app.put("/configuracoes")
+def atualizar_configuracoes(config: ConfiguracoesAtualizacao):
+    if config.dias_atencao <= 0 or config.dias_risco <= 0:
+        return {"erro": "Os prazos precisam ser maiores que zero."}
+    if config.dias_atencao >= config.dias_risco:
+        return {"erro": "O prazo de 'Atenção' precisa ser menor que o de 'Risco Alto'."}
+
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+
+        cursor.execute("SELECT id FROM configuracoes ORDER BY id LIMIT 1;")
+        linha = cursor.fetchone()
+
+        if linha:
+            cursor.execute(
+                "UPDATE configuracoes SET dias_atencao = %s, dias_risco = %s WHERE id = %s;",
+                (config.dias_atencao, config.dias_risco, linha[0])
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO configuracoes (dias_atencao, dias_risco) VALUES (%s, %s);",
+                (config.dias_atencao, config.dias_risco)
+            )
+
+        conexao.commit()
+        cursor.close()
+        conexao.close()
+        return {"mensagem": "Configurações atualizadas com sucesso!"}
+    except Exception as erro:
+        return {"erro": f"Erro ao atualizar configurações: {erro}"}
 
 # ==============================================================================
 # ROTAS DE CLIENTES
@@ -316,35 +374,225 @@ def obter_estatisticas():
     except Exception as erro:
         return {"erro": f"Erro ao calcular estatísticas financeiras: {erro}"}
 
-ALIAS_CABECALHOS = {
-    "nome": "nome",
-    "telefone": "telefone",
-    "celular": "telefone",
-    "cpf": "cpf",
-    "email": "email",
-    "e-mail": "email",
-    "data de nascimento": "data_nascimento",
-    "data nascimento": "data_nascimento",
-    "data_nascimento": "data_nascimento",
-    "nascimento": "data_nascimento",
-    "valor": "valor",
-    "valor da venda": "valor",
-    "receita": "valor",
-    "data da venda": "data_da_venda",
-    "data_da_venda": "data_da_venda",
-    "data venda": "data_da_venda",
-    "dia da venda": "data_da_venda",
-    "dia_da_venda": "data_da_venda",
-    "dia venda": "data_da_venda",
-    "data": "data_da_venda",
-    "dia": "data_da_venda",
+NOMES_MESES_ABREV = {
+    1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr", 5: "Mai", 6: "Jun",
+    7: "Jul", 8: "Ago", 9: "Set", 10: "Out", 11: "Nov", 12: "Dez"
 }
 
+def _receita_por_mes(meses: int):
+    meses = max(1, min(meses, 24))
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+
+        cursor.execute("""
+            SELECT TO_CHAR(DATE_TRUNC('month', data_da_venda), 'YYYY-MM') AS mes,
+                   SUM(valor) AS total,
+                   COUNT(*) AS quantidade
+            FROM vendas
+            WHERE data_da_venda >= (CURRENT_DATE - make_interval(months => %s))
+            GROUP BY mes;
+        """, (meses - 1,))
+        dados_por_mes = {
+            mes_chave: (float(total), int(quantidade))
+            for mes_chave, total, quantidade in cursor.fetchall()
+        }
+
+        cursor.close()
+        conexao.close()
+
+        hoje = datetime.now().date()
+        ano, mes = hoje.year, hoje.month
+
+        serie = []
+        for _ in range(meses):
+            chave = f"{ano:04d}-{mes:02d}"
+            valor, quantidade = dados_por_mes.get(chave, (0.0, 0))
+            serie.append({
+                "mes": chave,
+                "mes_label": f"{NOMES_MESES_ABREV[mes]}/{str(ano)[2:]}",
+                "valor": valor,
+                "quantidade": quantidade
+            })
+            mes -= 1
+            if mes == 0:
+                mes = 12
+                ano -= 1
+
+        serie.reverse()
+        return {"meses": serie}
+    except Exception as erro:
+        return {"erro": f"Erro ao calcular receita mensal: {erro}"}
+
+def _receita_por_ano(anos: int):
+    """ Mesma ideia de _receita_por_mes, mas agrupando por ano -- pra "últimos 5 anos"
+    não virar 60 pontos ilegíveis no gráfico, vira 5. """
+    anos = max(1, min(anos, 10))
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+
+        cursor.execute("""
+            SELECT TO_CHAR(DATE_TRUNC('year', data_da_venda), 'YYYY') AS ano,
+                   SUM(valor) AS total,
+                   COUNT(*) AS quantidade
+            FROM vendas
+            WHERE data_da_venda >= (CURRENT_DATE - make_interval(years => %s))
+            GROUP BY ano;
+        """, (anos - 1,))
+        dados_por_ano = {
+            ano_chave: (float(total), int(quantidade))
+            for ano_chave, total, quantidade in cursor.fetchall()
+        }
+
+        cursor.close()
+        conexao.close()
+
+        ano_atual = datetime.now().date().year
+
+        serie = []
+        for i in range(anos - 1, -1, -1):
+            ano = ano_atual - i
+            chave = f"{ano:04d}"
+            valor, quantidade = dados_por_ano.get(chave, (0.0, 0))
+            serie.append({
+                "mes": chave,
+                "mes_label": chave,
+                "valor": valor,
+                "quantidade": quantidade
+            })
+
+        return {"meses": serie}
+    except Exception as erro:
+        return {"erro": f"Erro ao calcular receita anual: {erro}"}
+
+def _receita_por_semana(quantidade: int, passo_semanas: int):
+    """ Agrupa vendas em blocos de `passo_semanas` semanas cada, terminando hoje.
+    "3 meses" usa 12 blocos de 1 semana; "6 meses" usa 13 blocos de 2 semanas --
+    mais detalhe do que um ponto por mês, sem virar uma poeira de pontos diários. """
+    quantidade = max(1, min(quantidade, 26))
+    passo_semanas = max(1, min(passo_semanas, 8))
+    try:
+        hoje = datetime.now().date()
+        dias_totais = quantidade * passo_semanas * 7
+        data_inicio = hoje - timedelta(days=dias_totais - 1)
+
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+        cursor.execute("""
+            SELECT data_da_venda, valor
+            FROM vendas
+            WHERE data_da_venda >= %s;
+        """, (data_inicio,))
+        linhas = cursor.fetchall()
+        cursor.close()
+        conexao.close()
+
+        blocos = [{"valor": 0.0, "quantidade": 0} for _ in range(quantidade)]
+        for data_venda, valor in linhas:
+            indice = (data_venda - data_inicio).days // (passo_semanas * 7)
+            if 0 <= indice < quantidade:
+                blocos[indice]["valor"] += float(valor)
+                blocos[indice]["quantidade"] += 1
+
+        serie = []
+        for i, bloco in enumerate(blocos):
+            inicio_bloco = data_inicio + timedelta(days=i * passo_semanas * 7)
+            serie.append({
+                "mes": inicio_bloco.isoformat(),
+                "mes_label": f"{inicio_bloco.day:02d}/{inicio_bloco.month:02d}",
+                "valor": bloco["valor"],
+                "quantidade": bloco["quantidade"]
+            })
+
+        return {"meses": serie}
+    except Exception as erro:
+        return {"erro": f"Erro ao calcular receita semanal: {erro}"}
+
+@app.get("/estatisticas/receita-mensal")
+def obter_receita_mensal(unidade: str = "mes", quantidade: int = 12, passo: int = 1):
+    """ Receita e quantidade de vendas agrupadas por semana (unidade=semana, com
+    `passo` semanas por bloco), mês (padrão) ou ano (unidade=ano), incluindo
+    períodos sem nenhuma venda com valor 0. """
+    if unidade == "ano":
+        return _receita_por_ano(quantidade)
+    if unidade == "semana":
+        return _receita_por_semana(quantidade, passo)
+    return _receita_por_mes(quantidade)
+
+@app.get("/estatisticas/clientes-periodo")
+def obter_clientes_periodo(unidade: str = "mes", quantidade: int = 12, passo: int = 1):
+    """ Quantos clientes distintos compraram no período, e os 5 que mais
+    compraram (em valor), pro mesmo período selecionado no Painel da Receita. """
+    if unidade == "ano":
+        intervalo_sql = "make_interval(years => %s)"
+        parametro = max(1, min(quantidade, 10))
+    elif unidade == "semana":
+        intervalo_sql = "make_interval(weeks => %s)"
+        parametro = max(1, min(quantidade, 26)) * max(1, min(passo, 8))
+    else:
+        intervalo_sql = "make_interval(months => %s)"
+        parametro = max(1, min(quantidade, 24))
+
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+
+        cursor.execute(f"""
+            SELECT c.id, c.nome, COUNT(v.id) AS total_compras, COALESCE(SUM(v.valor), 0) AS total_valor
+            FROM vendas v
+            JOIN clientes c ON c.id = v.cliente_id
+            WHERE v.data_da_venda >= (CURRENT_DATE - {intervalo_sql})
+            GROUP BY c.id, c.nome
+            ORDER BY total_valor DESC
+            LIMIT 5;
+        """, (parametro,))
+        top_clientes = [
+            {"id": linha[0], "nome": linha[1], "total_compras": linha[2], "total_valor": float(linha[3])}
+            for linha in cursor.fetchall()
+        ]
+
+        cursor.execute(f"""
+            SELECT COUNT(DISTINCT cliente_id)
+            FROM vendas
+            WHERE data_da_venda >= (CURRENT_DATE - {intervalo_sql});
+        """, (parametro,))
+        total_clientes_periodo = cursor.fetchone()[0]
+
+        cursor.close()
+        conexao.close()
+
+        return {
+            "total_clientes_periodo": int(total_clientes_periodo),
+            "top_clientes": top_clientes
+        }
+    except Exception as erro:
+        return {"erro": f"Erro ao calcular clientes do período: {erro}"}
+
+# Cada campo é reconhecido por QUALQUER cabeçalho que CONTENHA uma das palavras-chave
+# (não precisa bater a frase inteira) -- assim "Nome do Cliente", "Nome Completo" e "nome"
+# caem todos em "nome" sem precisar cadastrar cada variação manualmente.
+# A ordem importa: regras mais específicas (ex: "data da venda") vêm antes das genéricas.
+REGRAS_CABECALHO = [
+    (("data da venda", "dia da venda", "data venda", "dia venda", "data_da_venda",
+      "data da compra", "dia da compra", "data compra", "dia compra"), "data_da_venda"),
+    (("nascimento",), "data_nascimento"),
+    (("e-mail", "e mail", "email"), "email"),
+    (("cpf",), "cpf"),
+    (("telefone", "celular", "whatsapp", "fone"), "telefone"),
+    (("nome",), "nome"),
+    (("valor", "receita"), "valor"),
+]
+
 def _mapear_cabecalho(texto: str) -> str:
-    """ Aceita cabeçalhos em português com acento/espaço (ex: "Data de nascimento")
-    além do nome técnico exato (ex: "data_nascimento"). """
+    """ Reconhece cabeçalhos em português com acento/espaço e variações de redação
+    (ex: "Nome do Cliente", "Data de Nascimento", "Dia da Venda") por palavra-chave,
+    em vez de exigir o nome técnico exato. """
     normalizado = unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode("ascii").strip().lower()
-    return ALIAS_CABECALHOS.get(normalizado, normalizado)
+    for palavras_chave, campo in REGRAS_CABECALHO:
+        if any(chave in normalizado for chave in palavras_chave):
+            return campo
+    return normalizado
 
 def _texto_de_celula(valor):
     """ Normaliza um valor de célula (CSV ou Excel) para string limpa.
@@ -386,9 +634,11 @@ def _ler_linhas_csv(conteudo: bytes):
         yield {_mapear_cabecalho(chave): valor for chave, valor in linha.items()}
 
 def _ler_linhas_xlsx(conteudo: bytes, aba=None):
-    """ aba=None usa a aba ativa (primeira). Pode passar o nome de outra aba. """
+    """ aba=None usa a primeira aba do arquivo (por posição, não a "ativa" -- esse metadado
+    reflete só qual aba estava selecionada quando alguém salvou o arquivo, não qual tem os
+    dados certos). Pode passar o nome de outra aba explicitamente. """
     workbook = openpyxl.load_workbook(io.BytesIO(conteudo), data_only=True)
-    planilha = workbook.active if aba is None else workbook[aba]
+    planilha = workbook[workbook.sheetnames[0]] if aba is None else workbook[aba]
 
     linhas = planilha.iter_rows(values_only=True)
     primeira_linha = next(linhas, None)
@@ -401,22 +651,32 @@ def _ler_linhas_xlsx(conteudo: bytes, aba=None):
             continue
         yield dict(zip(cabecalho, linha))
 
-def _nome_aba_de_vendas(conteudo: bytes):
-    """ Se o .xlsx tiver uma segunda aba, retorna o nome dela (preferindo uma chamada "Vendas").
-    Retorna None se o arquivo só tiver uma aba (nada pra importar como vendas). """
+def _detectar_abas(conteudo: bytes):
+    """ Examina TODAS as abas do .xlsx pelo conteúdo (não pela posição/nome) e identifica
+    qual tem colunas de clientes (nome+telefone+cpf) e qual tem colunas de vendas
+    (cpf+valor+data_da_venda). As duas podem ser a mesma aba (uma planilha de "uma linha
+    por compra" serve pra extrair clientes únicos E importar cada venda).
+    Retorna (aba_clientes, aba_vendas, colunas_por_aba) -- os dois primeiros são None
+    se nenhuma aba qualificar. """
     workbook = openpyxl.load_workbook(io.BytesIO(conteudo), read_only=True)
     nomes = workbook.sheetnames
     workbook.close()
 
-    if len(nomes) < 2:
-        return None
+    aba_clientes = None
+    aba_vendas = None
+    colunas_por_aba = {}
 
     for nome in nomes:
-        normalizado = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode("ascii").strip().lower()
-        if normalizado == "vendas":
-            return nome
+        linhas = list(_ler_linhas_xlsx(conteudo, aba=nome))
+        colunas = {c for c in linhas[0].keys() if c} if linhas else set()
+        colunas_por_aba[nome] = colunas
 
-    return nomes[1]
+        if aba_clientes is None and {"nome", "telefone", "cpf"}.issubset(colunas):
+            aba_clientes = nome
+        if aba_vendas is None and {"cpf", "valor", "data_da_venda"}.issubset(colunas):
+            aba_vendas = nome
+
+    return aba_clientes, aba_vendas, colunas_por_aba
 
 def _processar_linhas_vendas(linhas, cursor):
     """ Insere vendas casando cada linha com um cliente já cadastrado pelo CPF.
@@ -464,18 +724,31 @@ async def importar_clientes(arquivo: UploadFile = File(...)):
 
     try:
         conteudo = await arquivo.read()
-        linhas = list(_ler_linhas_xlsx(conteudo) if eh_xlsx else _ler_linhas_csv(conteudo))
+        nome_aba_vendas = None
 
-        if not linhas:
-            return {"erro": "A planilha está vazia."}
-
-        colunas_disponiveis = set(linhas[0].keys())
-        colunas_faltando = {"nome", "telefone", "cpf"} - colunas_disponiveis
-        if colunas_faltando:
-            return {"erro": (
-                f"A planilha não tem a(s) coluna(s) obrigatória(s): {', '.join(sorted(colunas_faltando))}. "
-                f"Colunas encontradas: {', '.join(sorted(colunas_disponiveis))}."
-            )}
+        if eh_xlsx:
+            aba_clientes, nome_aba_vendas, colunas_por_aba = _detectar_abas(conteudo)
+            if aba_clientes is None:
+                detalhes = " | ".join(
+                    f'aba "{nome}": {", ".join(sorted(cols)) or "(vazia)"}'
+                    for nome, cols in colunas_por_aba.items()
+                )
+                return {"erro": (
+                    "Nenhuma aba da planilha tem as colunas obrigatórias (nome, telefone, cpf). "
+                    f"{detalhes}"
+                )}
+            linhas = list(_ler_linhas_xlsx(conteudo, aba=aba_clientes))
+        else:
+            linhas = list(_ler_linhas_csv(conteudo))
+            if not linhas:
+                return {"erro": "A planilha está vazia."}
+            colunas_disponiveis = {c for c in linhas[0].keys() if c}
+            colunas_faltando = {"nome", "telefone", "cpf"} - colunas_disponiveis
+            if colunas_faltando:
+                return {"erro": (
+                    f"A planilha não tem a(s) coluna(s) obrigatória(s): {', '.join(sorted(colunas_faltando))}. "
+                    f"Colunas encontradas: {', '.join(sorted(colunas_disponiveis))}."
+                )}
 
         conexao = conectar_banco()
         cursor = conexao.cursor()
@@ -515,13 +788,11 @@ async def importar_clientes(arquivo: UploadFile = File(...)):
             "clientes_ignorados_por_dados_incompletos": incompletos
         }
 
-        if eh_xlsx:
-            nome_aba_vendas = _nome_aba_de_vendas(conteudo)
-            if nome_aba_vendas:
-                linhas_vendas = list(_ler_linhas_xlsx(conteudo, aba=nome_aba_vendas))
-                vendas_inseridas, vendas_sem_cliente, _ = _processar_linhas_vendas(linhas_vendas, cursor)
-                resposta["vendas_inseridas"] = vendas_inseridas
-                resposta["vendas_ignoradas_sem_cliente_correspondente"] = vendas_sem_cliente
+        if nome_aba_vendas:
+            linhas_vendas = list(_ler_linhas_xlsx(conteudo, aba=nome_aba_vendas))
+            vendas_inseridas, vendas_sem_cliente, _ = _processar_linhas_vendas(linhas_vendas, cursor)
+            resposta["vendas_inseridas"] = vendas_inseridas
+            resposta["vendas_ignoradas_sem_cliente_correspondente"] = vendas_sem_cliente
 
         conexao.commit()
         cursor.close()
@@ -554,7 +825,7 @@ async def importar_vendas(arquivo: UploadFile = File(...)):
         if not linhas:
             return {"erro": "A planilha está vazia."}
 
-        colunas_disponiveis = set(linhas[0].keys())
+        colunas_disponiveis = {c for c in linhas[0].keys() if c}
         colunas_faltando = {"cpf", "valor", "data_da_venda"} - colunas_disponiveis
         if colunas_faltando:
             return {"erro": (

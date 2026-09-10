@@ -18,6 +18,17 @@ CREATE TABLE vendas (
     data_da_venda DATE NOT NULL
 );
 
+-- Migração (v0.11.0): régua de relacionamento configurável -- os dias do
+-- "Farol de Risco" (antes fixos em 30/90 no código) viram configuração do
+-- dono do negócio, pra atender nichos com ciclos de retorno diferentes
+-- (ex: clínica de estética ~30 dias vs. centro automotivo ~180 dias).
+CREATE TABLE configuracoes (
+    id SERIAL PRIMARY KEY,
+    dias_atencao INT NOT NULL DEFAULT 30,
+    dias_risco INT NOT NULL DEFAULT 90
+);
+INSERT INTO configuracoes (dias_atencao, dias_risco) VALUES (30, 90);
+
 
 -- Cadastrando 5 clientes fictícios
 INSERT INTO clientes (nome, telefone) VALUES 

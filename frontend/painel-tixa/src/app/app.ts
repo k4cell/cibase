@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -29,7 +29,7 @@ export class AppComponent implements OnInit {
   novaVendaValor: number | null = null;
 
   // Controle do menu de navegação (abas)
-  abaAtiva: string = 'recuperacao';
+  abaAtiva: string = 'inicio';
 
   clienteDetalhe: any = null;
   vendasClienteDetalhe: any[] = [];
@@ -46,6 +46,7 @@ export class AppComponent implements OnInit {
 
   totalRecuperado: number = 0;
   clientesReativados: number = 0;
+  receitaMensal: any[] = [];
 
   // Memórias de Segurança (Login)
   estaLogado: boolean = false;
@@ -65,10 +66,71 @@ export class AppComponent implements OnInit {
   clienteParaExcluirPermanente: any = null;
   excluindoPermanente: boolean = false;
 
-  constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
+  // Régua de relacionamento (Farol de Risco) -- configurável em "Configurações",
+  // usada em classificarOportunidade() e calcularRiscoCor(). 30/90 são só o
+  // valor padrão até a configuração real chegar do backend após o login.
+  configDiasAtencao: number = 30;
+  configDiasRisco: number = 90;
+  salvandoConfiguracoes: boolean = false;
+
+  // Cor de destaque (botões, aba ativa, links) -- só a marca/ação, nunca o
+  // verde de receita nem o vermelho de risco, que têm significado próprio.
+  // Guardado no localStorage do navegador (preferência de tela, não do negócio).
+  mostrarSeletorCor: boolean = false;
+  corSelecionada: string = 'Azul';
+
+  readonly PALETAS_COR = [
+    { nome: 'Azul',     primary: '#3b82f6', hover: '#60a5fa', soft: '#1e3a5f', border: '#1d4ed8', textSoft: '#93c5fd', ring: 'rgba(59, 130, 246, 0.35)',  onPrimary: '#fff' },
+    { nome: 'Violeta',  primary: '#8b5cf6', hover: '#a78bfa', soft: '#2e1f4d', border: '#6d28d9', textSoft: '#c4b5fd', ring: 'rgba(139, 92, 246, 0.35)',  onPrimary: '#fff' },
+    { nome: 'Amarelo',  primary: '#eab308', hover: '#facc15', soft: '#3d2e06', border: '#a16207', textSoft: '#fde68a', ring: 'rgba(234, 179, 8, 0.35)',   onPrimary: '#1c1917' },
+    { nome: 'Ciano',    primary: '#06b6d4', hover: '#22d3ee', soft: '#0e3a42', border: '#0e7490', textSoft: '#67e8f9', ring: 'rgba(6, 182, 212, 0.35)',   onPrimary: '#fff' },
+    { nome: 'Magenta',  primary: '#d946ef', hover: '#e879f9', soft: '#3d1a42', border: '#a21caf', textSoft: '#f0abfc', ring: 'rgba(217, 70, 239, 0.35)',  onPrimary: '#fff' },
+    { nome: 'Laranja',  primary: '#f97316', hover: '#fb923c', soft: '#3d2410', border: '#c2410c', textSoft: '#fdba74', ring: 'rgba(249, 115, 22, 0.35)',  onPrimary: '#fff' },
+    { nome: 'Rosa',     primary: '#ec4899', hover: '#f472b6', soft: '#3d1830', border: '#be185d', textSoft: '#f9a8d4', ring: 'rgba(236, 72, 153, 0.35)',  onPrimary: '#fff' },
+  ];
+
+  constructor(private http: HttpClient, private cdr: ChangeDetectorRef, private elementRef: ElementRef) {}
+
+  carregarCorSalva() {
+    let nomeSalvo: string | null = null;
+    try {
+      nomeSalvo = localStorage.getItem('tx-cor-destaque');
+    } catch {
+      return;
+    }
+
+    const paleta = this.PALETAS_COR.find(p => p.nome === nomeSalvo);
+    if (paleta) {
+      this.corSelecionada = paleta.nome;
+      this.aplicarPaleta(paleta);
+    }
+  }
+
+  aplicarPaleta(paleta: any) {
+    const estilo = this.elementRef.nativeElement.style;
+    estilo.setProperty('--tx-primary', paleta.primary);
+    estilo.setProperty('--tx-primary-hover', paleta.hover);
+    estilo.setProperty('--tx-primary-soft', paleta.soft);
+    estilo.setProperty('--tx-primary-border', paleta.border);
+    estilo.setProperty('--tx-primary-text-soft', paleta.textSoft);
+    estilo.setProperty('--tx-primary-ring', paleta.ring);
+    estilo.setProperty('--tx-on-primary', paleta.onPrimary);
+  }
+
+  selecionarCorDestaque(paleta: any) {
+    this.corSelecionada = paleta.nome;
+    this.aplicarPaleta(paleta);
+    this.mostrarSeletorCor = false;
+    try {
+      localStorage.setItem('tx-cor-destaque', paleta.nome);
+    } catch {
+      // Preferência não persiste (ex: navegação privada) -- sem problema, só não sobrevive ao reload.
+    }
+  }
 
   ngOnInit() {
     // A tela abre em branco de propósito. Os dados só serão carregados APÓS o login!
+    this.carregarCorSalva();
   }
 
   // ==============================================================================
@@ -91,10 +153,14 @@ export class AppComponent implements OnInit {
           this.mostrarToast(resposta.erro, '#dc3545'); // Erro vermelho
         } else {
           this.estaLogado = true; // Libera o painel
+          this.abaAtiva = 'inicio'; // Login sempre cai na Home, nunca numa aba residual
           this.mostrarToast('Bem-vindo ao Painel Tixa!', '#28a745');
           
           // Somente AGORA buscamos o dinheiro e os clientes no banco de dados!
+          this.carregarConfiguracoes();
           this.carregarEstatisticas();
+          this.carregarReceitaMensal();
+          this.carregarClientesPeriodo();
           this.carregarClientes();
           this.carregarClientesArquivados();
         }
@@ -284,6 +350,8 @@ export class AppComponent implements OnInit {
         this.mostrarToast(mensagem, cor);
         this.carregarClientes();
         this.carregarEstatisticas();
+        this.carregarReceitaMensal();
+        this.carregarClientesPeriodo();
       },
       error: (erro) => {
         this.importandoPlanilha = false;
@@ -333,6 +401,8 @@ export class AppComponent implements OnInit {
 
         this.carregarClientes();
         this.carregarEstatisticas();
+        this.carregarReceitaMensal();
+        this.carregarClientesPeriodo();
       },
       error: (erro) => {
         this.importandoVendas = false;
@@ -417,6 +487,8 @@ export class AppComponent implements OnInit {
           this.mostrarToast('Cliente excluído permanentemente.', '#28a745');
           this.carregarClientesArquivados();
           this.carregarEstatisticas();
+          this.carregarReceitaMensal();
+          this.carregarClientesPeriodo();
         }
       },
       error: (erro) => {
@@ -435,15 +507,146 @@ export class AppComponent implements OnInit {
       next: (dados) => {
         this.totalRecuperado = dados.total_recuperado;
         this.clientesReativados = dados.clientes_reativados;
-        this.cdr.detectChanges(); 
+        this.cdr.detectChanges();
       },
       error: (erro) => this.mostrarToast('Falha ao calcular as estatísticas.', '#dc3545')
     });
   }
 
+  carregarConfiguracoes() {
+    this.http.get<any>('http://127.0.0.1:8000/configuracoes').subscribe({
+      next: (dados) => {
+        if (!dados.erro) {
+          this.configDiasAtencao = dados.dias_atencao;
+          this.configDiasRisco = dados.dias_risco;
+          this.cdr.detectChanges();
+        }
+      },
+      error: (erro) => this.mostrarToast('Falha ao carregar as configurações.', '#dc3545')
+    });
+  }
+
+  salvarConfiguracoes() {
+    if (this.configDiasAtencao <= 0 || this.configDiasRisco <= 0) {
+      this.mostrarToast('Os prazos precisam ser maiores que zero.', '#ffc107');
+      return;
+    }
+    if (this.configDiasAtencao >= this.configDiasRisco) {
+      this.mostrarToast('O prazo de "Atenção" precisa ser menor que o de "Risco Alto".', '#ffc107');
+      return;
+    }
+
+    this.salvandoConfiguracoes = true;
+    const dados = { dias_atencao: this.configDiasAtencao, dias_risco: this.configDiasRisco };
+
+    this.http.put<any>('http://127.0.0.1:8000/configuracoes', dados).subscribe({
+      next: (resposta) => {
+        this.salvandoConfiguracoes = false;
+        if (resposta.erro) {
+          this.mostrarToast(resposta.erro, '#ffc107');
+        } else {
+          this.mostrarToast('Configurações salvas! O farol de risco já está atualizado.', '#28a745');
+        }
+      },
+      error: (erro) => {
+        this.salvandoConfiguracoes = false;
+        this.mostrarToast('Falha ao salvar as configurações.', '#dc3545');
+      }
+    });
+  }
+
+  // Valor do <select>. Períodos curtos mostram mais detalhe (blocos de semana(s))
+  // em vez de virar só 3 ou 6 pontos no gráfico:
+  // 3m -> 12 blocos de 1 semana | 6m -> 13 blocos de 2 semanas | 12m -> 12 meses | 5a -> 5 anos
+  periodoSelecionado: string = '12m';
+  clientesPeriodoTotal: number = 0;
+  topClientesPeriodo: any[] = [];
+
+  private readonly PERIODOS: { [chave: string]: { unidade: string; quantidade: number; passo: number; label: string } } = {
+    '3m': { unidade: 'semana', quantidade: 12, passo: 1, label: '3 meses' },
+    '6m': { unidade: 'semana', quantidade: 13, passo: 2, label: '6 meses' },
+    '12m': { unidade: 'mes', quantidade: 12, passo: 1, label: '12 meses' },
+    '5a': { unidade: 'ano', quantidade: 5, passo: 1, label: '5 anos' }
+  };
+
+  private periodoParams() {
+    return this.PERIODOS[this.periodoSelecionado] || this.PERIODOS['12m'];
+  }
+
+  periodoLabelTexto(): string {
+    return this.periodoParams().label;
+  }
+
+  carregarReceitaMensal() {
+    const { unidade, quantidade, passo } = this.periodoParams();
+    this.http.get<any>(`http://127.0.0.1:8000/estatisticas/receita-mensal?unidade=${unidade}&quantidade=${quantidade}&passo=${passo}`).subscribe({
+      next: (dados) => {
+        this.receitaMensal = dados.meses || [];
+        this.cdr.detectChanges();
+      },
+      error: (erro) => this.mostrarToast('Falha ao carregar a receita mensal.', '#dc3545')
+    });
+  }
+
+  carregarClientesPeriodo() {
+    const { unidade, quantidade, passo } = this.periodoParams();
+    this.http.get<any>(`http://127.0.0.1:8000/estatisticas/clientes-periodo?unidade=${unidade}&quantidade=${quantidade}&passo=${passo}`).subscribe({
+      next: (dados) => {
+        this.clientesPeriodoTotal = dados.total_clientes_periodo || 0;
+        this.topClientesPeriodo = dados.top_clientes || [];
+        this.cdr.detectChanges();
+      },
+      error: (erro) => this.mostrarToast('Falha ao carregar os clientes do período.', '#dc3545')
+    });
+  }
+
+  receitaDoPeriodo(): number {
+    return this.receitaMensal.reduce((soma: number, item: any) => soma + item.valor, 0);
+  }
+
+  vendasDoPeriodo(): number {
+    return this.receitaMensal.reduce((soma: number, item: any) => soma + item.quantidade, 0);
+  }
+
+  // Gráfico de linha: coordenadas em porcentagem (0-100) numa margem interna,
+  // pra ficarem idênticas entre o SVG (linha/área) e os pontos/rótulos em HTML.
+  // "campo" escolhe qual métrica plotar: 'valor' (receita) ou 'quantidade' (nº de vendas).
+  private readonly margemGraficoPct = 8;
+
+  posXGraficoPct(indice: number): number {
+    const n = this.receitaMensal.length;
+    if (n <= 1) return 50;
+    const usavel = 100 - 2 * this.margemGraficoPct;
+    return this.margemGraficoPct + (indice / (n - 1)) * usavel;
+  }
+
+  posYGraficoPct(item: any, campo: 'valor' | 'quantidade'): number {
+    const maior = Math.max(...this.receitaMensal.map((m: any) => m[campo]), 1);
+    const usavel = 100 - 2 * this.margemGraficoPct;
+    return this.margemGraficoPct + (item[campo] / maior) * usavel;
+  }
+
+  pontosLinhaGrafico(campo: 'valor' | 'quantidade'): string {
+    return this.receitaMensal
+      .map((item: any, i: number) => `${this.posXGraficoPct(i)},${100 - this.posYGraficoPct(item, campo)}`)
+      .join(' ');
+  }
+
+  pontosAreaGrafico(campo: 'valor' | 'quantidade'): string {
+    if (this.receitaMensal.length === 0) return '';
+    const linha = this.pontosLinhaGrafico(campo);
+    const ultimoIndice = this.receitaMensal.length - 1;
+    return `${this.posXGraficoPct(0)},100 ${linha} ${this.posXGraficoPct(ultimoIndice)},100`;
+  }
+
+  mudarPeriodoGrafico() {
+    this.carregarReceitaMensal();
+    this.carregarClientesPeriodo();
+  }
+
   classificarOportunidade(cliente: any): any {
     if (!cliente.ultima_compra || cliente.ultima_compra === 'Sem vendas') {
-      return { texto: '🎯 Novo Lead', corFundo: '#e0f3ff', corTexto: '#004085' }; 
+      return { texto: '🎯 Novo Lead', corFundo: '#0c3a5f', corTexto: '#93c5fd' };
     }
 
     const dataCompra = new Date(cliente.ultima_compra);
@@ -451,16 +654,16 @@ export class AppComponent implements OnInit {
     const diasInativos = Math.floor((hoje.getTime() - dataCompra.getTime()) / (1000 * 3600 * 24));
     const valor = cliente.valor_recuperado;
 
-    if (diasInativos > 90 && valor >= 400) {
-      return { texto: '💎 Valioso em Risco', corFundo: '#f8d7da', corTexto: '#721c24' }; 
-    } else if (diasInativos > 90) {
-      return { texto: '💤 Adormecido', corFundo: '#e2e3e5', corTexto: '#383d41' }; 
-    } else if (diasInativos <= 30 && valor >= 400) {
-      return { texto: '⭐ Promotor', corFundo: '#d4edda', corTexto: '#155724' }; 
-    } else if (diasInativos > 30 && diasInativos <= 90) {
-      return { texto: '🔥 Recompra Provável', corFundo: '#fff3cd', corTexto: '#856404' }; 
+    if (diasInativos > this.configDiasRisco && valor >= 400) {
+      return { texto: '💎 Valioso em Risco', corFundo: '#450a0a', corTexto: '#fca5a5' };
+    } else if (diasInativos > this.configDiasRisco) {
+      return { texto: '💤 Adormecido', corFundo: '#334155', corTexto: '#cbd5e1' };
+    } else if (diasInativos <= this.configDiasAtencao && valor >= 400) {
+      return { texto: '⭐ Promotor', corFundo: '#064e3b', corTexto: '#6ee7b7' };
+    } else if (diasInativos > this.configDiasAtencao && diasInativos <= this.configDiasRisco) {
+      return { texto: '🔥 Recompra Provável', corFundo: '#451a03', corTexto: '#fcd34d' };
     } else {
-      return { texto: '🔄 Recente', corFundo: '#d1ecf1', corTexto: '#0c5460' }; 
+      return { texto: '🔄 Recente', corFundo: '#134e4a', corTexto: '#5eead4' };
     }
   }
 
@@ -471,9 +674,9 @@ export class AppComponent implements OnInit {
     const hoje = new Date();
     const diasInativos = Math.floor((hoje.getTime() - dataCompra.getTime()) / (1000 * 3600 * 24));
 
-    if (diasInativos <= 30) return '#d4edda'; 
-    if (diasInativos <= 90) return '#fff3cd'; 
-    return '#f8d7da'; 
+    if (diasInativos <= this.configDiasAtencao) return '#064e3b';
+    if (diasInativos <= this.configDiasRisco) return '#451a03';
+    return '#450a0a';
   }
 
   exibirTextoDias(dataUltimaCompra: string): string {
@@ -511,6 +714,8 @@ export class AppComponent implements OnInit {
           this.mostrarToast('Venda registrada!', '#28a745');
           this.carregarClientes(); 
           this.carregarEstatisticas();
+          this.carregarReceitaMensal();
+          this.carregarClientesPeriodo();
         }
       },
       error: (erro) => this.mostrarToast('Falha ao registrar venda.', '#dc3545')
@@ -526,11 +731,11 @@ export class AppComponent implements OnInit {
     let mensagem = '';
     const corRisco = this.calcularRiscoCor(cliente.ultima_compra);
 
-    if (corRisco === '#f8d7da') { 
+    if (corRisco === '#450a0a') {
       mensagem = `Olá, ${cliente.nome}! Tudo bem? Já faz um tempo desde a sua última visita. Temos condições especiais para você voltar, podemos conversar?`;
-    } else if (corRisco === '#fff3cd') { 
+    } else if (corRisco === '#451a03') {
       mensagem = `Oi, ${cliente.nome}! Tudo certo? Viemos saber se você está precisando de alguma manutenção ou novidade. Nossa equipe está à disposição!`;
-    } else if (corRisco === '#d4edda') { 
+    } else if (corRisco === '#064e3b') {
       mensagem = `Olá, ${cliente.nome}! Muito obrigado pela sua preferência recente. Como está sendo sua experiência com a nossa empresa?`;
     } else { 
       mensagem = `Olá, ${cliente.nome}! Tudo bem? Vimos o seu cadastro aqui e queremos te apresentar nossos serviços. Posso te enviar nosso catálogo?`;
