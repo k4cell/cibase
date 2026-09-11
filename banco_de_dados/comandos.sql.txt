@@ -29,6 +29,12 @@ CREATE TABLE configuracoes (
 );
 INSERT INTO configuracoes (dias_atencao, dias_risco) VALUES (30, 90);
 
+-- Migração (v0.11.0): fila "Oportunidades de hoje" -- v1 simplificada da fila
+-- de recompra descrita no doc de visão do negócio. proximo_contato_em marca
+-- até quando o cliente sai da fila depois de um "Adiar" ou "Recusar" (mesmo
+-- mecanismo pros dois casos, só muda a quantidade de dias empurrada).
+-- ALTER TABLE clientes ADD COLUMN IF NOT EXISTS proximo_contato_em DATE;
+
 
 -- Cadastrando 5 clientes fictícios
 INSERT INTO clientes (nome, telefone) VALUES 

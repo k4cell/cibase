@@ -2,20 +2,51 @@ import csv
 import io
 import unicodedata
 import openpyxl
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import psycopg2
 from datetime import datetime, timedelta
+import firebase_admin
+from firebase_admin import credentials as firebase_credentials, auth as firebase_auth
+
+# ==============================================================================
+# AUTENTICAÇÃO (FIREBASE)
+# ==============================================================================
+# Inicializa o Admin SDK uma vez, na subida do servidor. O arquivo é secreto
+# (dá poder de administrador sobre o projeto Firebase) -- por isso vive só no
+# disco local e está no .gitignore, nunca commitado.
+_credencial_firebase = firebase_credentials.Certificate("firebase-service-account.json")
+firebase_admin.initialize_app(_credencial_firebase)
+
+_esquema_bearer = HTTPBearer()
+
+def verificar_token(credenciais: HTTPAuthorizationCredentials = Depends(_esquema_bearer)) -> dict:
+    """
+    Roda em TODA rota da API (aplicada globalmente lá embaixo, no FastAPI(...)).
+    Confere se o token que o Angular mandou no header Authorization foi
+    realmente emitido pelo Firebase pra este projeto, e se ainda não expirou.
+    Se passar, devolve os dados do usuário (uid, email); se não, barra a
+    requisição com 401 antes mesmo dela chegar na rota.
+    """
+    try:
+        return firebase_auth.verify_id_token(credenciais.credentials)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido ou expirado.")
 
 # ==============================================================================
 # CONFIGURAÇÕES INICIAIS DA API (MOTOR TIXA)
 # ==============================================================================
-app = FastAPI(title="Motor Backend - Projeto Tixa", version="0.9.0")
+app = FastAPI(
+    title="Motor Backend - Projeto Tixa",
+    version="0.12.0",
+    dependencies=[Depends(verificar_token)]  # exige token válido em toda rota
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,17 +66,18 @@ class NovaVenda(BaseModel):
     cliente_id: int
     valor: float
 
-class CredenciaisLogin(BaseModel):
-    """ Molde para receber e-mail e senha do Frontend """
-    email: str
-    senha: str
-
 class ConfiguracoesAtualizacao(BaseModel):
     """ Régua de relacionamento: em quantos dias sem comprar um cliente vira
     "Atenção" e depois "Risco Alto". Configurável porque o ciclo de retorno
     varia muito por nicho (ex: estética ~30 dias, oficina/automotivo ~180 dias). """
     dias_atencao: int
     dias_risco: int
+
+class AdiarContato(BaseModel):
+    """ Empurra proximo_contato_em pra frente, tirando o cliente da fila de
+    hoje até essa data. Usado tanto pra "adiar" (poucos dias) quanto pra
+    "recusou" (bem mais dias) -- é o mesmo mecanismo, só muda a quantidade. """
+    dias: int
 
 # ==============================================================================
 # CONEXÃO COM O BANCO DE DADOS
@@ -58,23 +90,6 @@ def conectar_banco():
         password="cassi10",
         port="5432"
     )
-
-# ==============================================================================
-# ROTAS DE SEGURANÇA E LOGIN (VERSÃO 0.9)
-# ==============================================================================
-@app.post("/login")
-def fazer_login(credenciais: CredenciaisLogin):
-    """ 
-    ROTA DE SEGURANÇA: Valida o acesso ao painel.
-    MVP: Credenciais de Administrador Único fixadas no código.
-    """
-    EMAIL_ADMIN = "adm"
-    SENHA_ADMIN = "123"
-
-    if credenciais.email == EMAIL_ADMIN and credenciais.senha == SENHA_ADMIN:
-        return {"mensagem": "Login efetuado com sucesso!"}
-    else:
-        return {"erro": "E-mail ou senha incorretos. Acesso negado."}
 
 # ==============================================================================
 # CONFIGURAÇÕES DO NEGÓCIO (régua de relacionamento / farol de risco)
@@ -139,11 +154,12 @@ def _buscar_clientes(ativo: bool):
             c.id, c.nome, c.telefone, c.cpf, c.email, c.data_nascimento,
             MAX(v.data_da_venda) AS ultima_compra,
             COALESCE(SUM(v.valor), 0) AS valor_recuperado,
-            COUNT(v.id) AS total_compras
+            COUNT(v.id) AS total_compras,
+            c.proximo_contato_em
         FROM clientes c
         LEFT JOIN vendas v ON c.id = v.cliente_id
         WHERE c.ativo = %s
-        GROUP BY c.id, c.nome, c.telefone, c.cpf, c.email, c.data_nascimento
+        GROUP BY c.id, c.nome, c.telefone, c.cpf, c.email, c.data_nascimento, c.proximo_contato_em
         ORDER BY c.id;
     """
     cursor.execute(comando_sql, (ativo,))
@@ -161,7 +177,8 @@ def _buscar_clientes(ativo: bool):
             "data_nascimento": str(cliente[5]) if cliente[5] else "Não informado",
             "ultima_compra": str(cliente[6]) if cliente[6] else "Sem vendas",
             "valor_recuperado": float(cliente[7]),
-            "total_compras": int(cliente[8])
+            "total_compras": int(cliente[8]),
+            "proximo_contato_em": str(cliente[9]) if cliente[9] else None
         }
         for cliente in clientes_do_banco
     ]
@@ -278,6 +295,33 @@ def arquivar_cliente(cliente_id: int):
 
         if linhas_afetadas == 0: return {"erro": "Cliente não encontrado ou já arquivado."}
         return {"mensagem": "Cliente arquivado com sucesso!"}
+    except Exception as erro:
+        return {"erro": str(erro)}
+
+@app.put("/clientes/{cliente_id}/adiar")
+def adiar_contato(cliente_id: int, dados: AdiarContato):
+    """
+    Empurra proximo_contato_em pra frente: o cliente some da fila de hoje até
+    essa data, sem mudar status nem histórico -- só quando ele pode reaparecer.
+    """
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+
+        comando_sql = """
+            UPDATE clientes
+            SET proximo_contato_em = CURRENT_DATE + make_interval(days => %s)
+            WHERE id = %s AND ativo = TRUE;
+        """
+        cursor.execute(comando_sql, (dados.dias, cliente_id))
+
+        linhas_afetadas = cursor.rowcount
+        conexao.commit()
+        cursor.close()
+        conexao.close()
+
+        if linhas_afetadas == 0: return {"erro": "Cliente não encontrado ou arquivado."}
+        return {"mensagem": "Contato adiado."}
     except Exception as erro:
         return {"erro": str(erro)}
 

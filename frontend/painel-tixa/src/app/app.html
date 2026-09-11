@@ -79,6 +79,51 @@
   </aside>
 
   <div class="tx-login-panel">
+    <div class="tx-login-theme-controls">
+      <div class="tx-color-picker-wrap">
+        <button class="tx-color-picker-btn" (click)="mostrarSeletorCor = !mostrarSeletorCor" title="Cor de destaque" aria-label="Escolher cor de destaque">
+          <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+            <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+            <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+            <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+          </svg>
+        </button>
+
+        <div class="tx-color-picker-backdrop" *ngIf="mostrarSeletorCor" (click)="mostrarSeletorCor = false"></div>
+
+        <div class="tx-color-picker-menu" *ngIf="mostrarSeletorCor">
+          <button
+            *ngFor="let paleta of PALETAS_COR"
+            class="tx-color-picker-item"
+            [class.is-active]="corSelecionada === paleta.nome"
+            (click)="selecionarCorDestaque(paleta)"
+          >
+            <span class="tx-color-swatch" [style.background]="paleta.primary"></span>
+            {{ paleta.nome }}
+          </button>
+        </div>
+      </div>
+
+      <button class="tx-color-picker-btn" (click)="alternarTema()" [title]="temaAtual === 'escuro' ? 'Ativar tema claro' : 'Ativar tema escuro'" [attr.aria-label]="temaAtual === 'escuro' ? 'Ativar tema claro' : 'Ativar tema escuro'">
+        <svg *ngIf="temaAtual === 'escuro'" class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2"></path>
+          <path d="M12 20v2"></path>
+          <path d="m4.93 4.93 1.41 1.41"></path>
+          <path d="m17.66 17.66 1.41 1.41"></path>
+          <path d="M2 12h2"></path>
+          <path d="M20 12h2"></path>
+          <path d="m6.34 17.66-1.41 1.41"></path>
+          <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+        <svg *ngIf="temaAtual === 'claro'" class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
+      </button>
+    </div>
+
     <div class="tx-login-card">
       <h1 class="tx-login-title">Entrar na plataforma</h1>
       <p class="tx-login-subtitle">Plataforma de Recuperação de Receita</p>
@@ -177,6 +222,23 @@
         </div>
       </div>
 
+      <button class="tx-color-picker-btn" (click)="alternarTema()" [title]="temaAtual === 'escuro' ? 'Ativar tema claro' : 'Ativar tema escuro'" [attr.aria-label]="temaAtual === 'escuro' ? 'Ativar tema claro' : 'Ativar tema escuro'">
+        <svg *ngIf="temaAtual === 'escuro'" class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2"></path>
+          <path d="M12 20v2"></path>
+          <path d="m4.93 4.93 1.41 1.41"></path>
+          <path d="m17.66 17.66 1.41 1.41"></path>
+          <path d="M2 12h2"></path>
+          <path d="M20 12h2"></path>
+          <path d="m6.34 17.66-1.41 1.41"></path>
+          <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+        <svg *ngIf="temaAtual === 'claro'" class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
+      </button>
+
       <div class="tx-user-chip">
         <div class="tx-user-avatar">AD</div>
         <div class="tx-user-meta">
@@ -185,7 +247,7 @@
         </div>
       </div>
 
-      <button class="tx-logout-btn" (click)="estaLogado = false; loginSenha = ''" title="Sair do sistema">
+      <button class="tx-logout-btn" (click)="sair()" title="Sair do sistema">
         <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
           <polyline points="16 17 21 12 16 7"></polyline>
@@ -205,6 +267,13 @@
           <path d="M5 9v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9"></path>
         </svg>
         Início
+      </button>
+      <button class="tx-tab" [class.is-active]="abaAtiva === 'hoje'" (click)="abaAtiva = 'hoje'">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m9 11 3 3L22 4"></path>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+        </svg>
+        Hoje
       </button>
       <button class="tx-tab" [class.is-active]="abaAtiva === 'recuperacao'" (click)="abaAtiva = 'recuperacao'">
         <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -502,6 +571,18 @@
       </div>
 
       <div class="tx-home-grid">
+        <button class="tx-home-card" (click)="abaAtiva = 'hoje'">
+          <div class="tx-home-card-icon">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 11 3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+          </div>
+          <h3 class="tx-home-card-title">Hoje</h3>
+          <p class="tx-home-card-desc">A fila pronta de quem contatar agora, com mensagem sugerida.</p>
+          <span class="tx-home-card-stat">{{ filaHoje.length }} na fila</span>
+        </button>
+
         <button class="tx-home-card" (click)="abaAtiva = 'recuperacao'">
           <div class="tx-home-card-icon">
             <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -559,6 +640,105 @@
 
     </div>
     <!-- ========================== FIM DA ABA 0 ========================== -->
+
+
+    <!-- ============================ ABA HOJE: OPORTUNIDADES ============================ -->
+    <div *ngIf="abaAtiva === 'hoje'">
+
+      <div class="tx-page-header">
+        <h1 class="tx-page-title">Oportunidades de hoje</h1>
+        <p class="tx-page-subtitle">Fila pronta pra contatar, com motivo e mensagem já sugeridos.</p>
+      </div>
+
+      <div class="tx-kpi-grid">
+        <div class="tx-kpi-card tx-kpi-card--info">
+          <div>
+            <h3 class="tx-kpi-label">Na fila hoje</h3>
+            <h2 class="tx-kpi-value">{{ filaHoje.length }}</h2>
+            <p class="tx-kpi-foot">Limite de {{ LIMITE_FILA_HOJE }} contatos por dia</p>
+          </div>
+          <div class="tx-kpi-icon tx-kpi-icon--info">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 11 3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="tx-kpi-card tx-kpi-card--success">
+          <div>
+            <h3 class="tx-kpi-label">Recuperado no mês</h3>
+            <h2 class="tx-kpi-value"><span class="tx-kpi-currency">R$</span>{{ recuperadoNoMesAtual.toFixed(2) }}</h2>
+            <p class="tx-kpi-foot">Vendas registradas neste mês</p>
+          </div>
+          <div class="tx-kpi-icon tx-kpi-icon--success">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+              <circle cx="12" cy="12" r="2"></circle>
+              <path d="M6 12h.01"></path>
+              <path d="M18 12h.01"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="tx-fila-lista" *ngIf="filaHoje.length > 0; else filaVazia">
+        <div class="tx-fila-card" *ngFor="let item of filaHoje">
+          <div class="tx-fila-card-topo">
+            <div class="tx-client-cell">
+              <div class="tx-avatar">{{ item.cliente.nome.charAt(0).toUpperCase() }}</div>
+              <div>
+                <div class="tx-client-name">{{ item.cliente.nome }}</div>
+                <div class="tx-fila-subtitulo">R$ {{ item.cliente.valor_recuperado.toFixed(2) }} recuperados · há {{ item.dias }} dias</div>
+              </div>
+            </div>
+            <button class="tx-fila-recusar" (click)="recusarContatoFila(item)" title="Cliente recusou / não incomodar por um bom tempo">
+              <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="tx-fila-chips">
+            <span class="tx-badge">{{ item.faixaFrequencia }}</span>
+            <span class="tx-badge">{{ item.faixaValor }}</span>
+            <span class="tx-badge">{{ item.statusTexto }}</span>
+          </div>
+
+          <p class="tx-fila-motivo">{{ item.motivo }}</p>
+
+          <textarea class="tx-fila-textarea" [(ngModel)]="item.mensagemDraft" rows="2"></textarea>
+
+          <div class="tx-fila-acoes">
+            <button class="tx-btn tx-btn-primary" (click)="enviarMensagemFila(item)">
+              <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+              </svg>
+              Enviar
+            </button>
+            <button class="tx-btn tx-btn-secondary" (click)="adiarContatoFila(item)">Adiar</button>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #filaVazia>
+        <div class="tx-table-card">
+          <div class="tx-empty-state">
+            <div class="tx-empty-state-icon">
+              <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m9 11 3 3L22 4"></path>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+              </svg>
+            </div>
+            <div class="tx-empty-state-title">Nenhuma oportunidade pra hoje</div>
+            <div class="tx-empty-state-subtitle">Todo mundo em dia, ou os prazos em Configurações estão exigentes demais.</div>
+          </div>
+        </div>
+      </ng-template>
+
+    </div>
+    <!-- ========================== FIM DA ABA HOJE ========================== -->
 
 
     <!-- ============================ ABA 1: RECUPERAÇÃO ============================ -->
@@ -619,13 +799,13 @@
         <button class="tx-filter-pill tx-filter-pill--neutral" [class.is-active]="filtroAtual === 'Todos'" (click)="definirFiltro('Todos')">
           Todos
         </button>
-        <button class="tx-filter-pill tx-filter-pill--danger" [class.is-active]="filtroAtual === '#450a0a'" (click)="definirFiltro('#450a0a')">
+        <button class="tx-filter-pill tx-filter-pill--danger" [class.is-active]="filtroAtual === 'risco'" (click)="definirFiltro('risco')">
           <span class="tx-dot"></span> Risco Alto
         </button>
-        <button class="tx-filter-pill tx-filter-pill--warning" [class.is-active]="filtroAtual === '#451a03'" (click)="definirFiltro('#451a03')">
+        <button class="tx-filter-pill tx-filter-pill--warning" [class.is-active]="filtroAtual === 'atencao'" (click)="definirFiltro('atencao')">
           <span class="tx-dot"></span> Atenção
         </button>
-        <button class="tx-filter-pill tx-filter-pill--success" [class.is-active]="filtroAtual === '#064e3b'" (click)="definirFiltro('#064e3b')">
+        <button class="tx-filter-pill tx-filter-pill--success" [class.is-active]="filtroAtual === 'saudavel'" (click)="definirFiltro('saudavel')">
           <span class="tx-dot"></span> Saudáveis
         </button>
       </div>
