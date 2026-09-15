@@ -405,6 +405,13 @@
             <span class="tx-currency-prefix">R$</span>
             <input type="number" [(ngModel)]="novaVendaValor" placeholder="0,00">
           </div>
+
+          <label class="tx-field-label" style="margin-top: 14px;">Serviço</label>
+          <select class="tx-input" [(ngModel)]="novaVendaServicoId">
+            <option value="">Não informado</option>
+            <option *ngFor="let servico of servicos" [value]="servico.id">{{ servico.nome }}</option>
+          </select>
+
           <p class="tx-sale-hint">A data da última compra é atualizada automaticamente.</p>
         </div>
 
@@ -541,7 +548,10 @@
               <p *ngIf="carregandoVendasDetalhe" class="tx-sale-hint">Carregando...</p>
               <ul *ngIf="!carregandoVendasDetalhe && vendasClienteDetalhe.length > 0" class="tx-vendas-list">
                 <li *ngFor="let venda of vendasClienteDetalhe" class="tx-vendas-item">
-                  <span>{{ venda.data_da_venda }}</span>
+                  <span>
+                    {{ venda.data_da_venda }}
+                    <span class="tx-vendas-item-servico">{{ venda.servico }}</span>
+                  </span>
                   <span class="tx-revenue-cell">R$ {{ venda.valor.toFixed(2) }}</span>
                 </li>
               </ul>
@@ -650,7 +660,7 @@
         <p class="tx-page-subtitle">Fila pronta pra contatar, com motivo e mensagem já sugeridos.</p>
       </div>
 
-      <div class="tx-kpi-grid">
+      <div class="tx-kpi-grid tx-kpi-grid--compacta">
         <div class="tx-kpi-card tx-kpi-card--info">
           <div>
             <h3 class="tx-kpi-label">Na fila hoje</h3>
@@ -736,6 +746,37 @@
           </div>
         </div>
       </ng-template>
+
+      <div class="tx-adiados-secao" *ngIf="clientesAdiados.length > 0">
+        <button class="tx-adiados-toggle" (click)="mostrarAdiados = !mostrarAdiados">
+          <div class="tx-adiados-toggle-icone">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 6v6l4 2"></path>
+            </svg>
+          </div>
+          <div class="tx-adiados-toggle-texto">
+            <span class="tx-adiados-toggle-titulo">Adiados ({{ clientesAdiados.length }})</span>
+            <span class="tx-adiados-toggle-desc">Clientes que saíram da fila por um tempo — adiados ou recusados</span>
+          </div>
+          <svg class="tx-icon tx-adiados-seta" [class.is-aberta]="mostrarAdiados" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m9 18 6-6-6-6"></path>
+          </svg>
+        </button>
+
+        <div class="tx-adiados-lista" *ngIf="mostrarAdiados">
+          <div class="tx-adiados-item" *ngFor="let item of clientesAdiados">
+            <div class="tx-client-cell">
+              <div class="tx-avatar">{{ item.cliente.nome.charAt(0).toUpperCase() }}</div>
+              <div>
+                <div class="tx-client-name">{{ item.cliente.nome }}</div>
+                <div class="tx-fila-subtitulo">{{ item.textoRetorno }} · {{ item.cliente.proximo_contato_em }}</div>
+              </div>
+            </div>
+            <button class="tx-btn tx-btn-secondary" (click)="trazerDeVoltaAgora(item)">Trazer de volta</button>
+          </div>
+        </div>
+      </div>
 
     </div>
     <!-- ========================== FIM DA ABA HOJE ========================== -->
@@ -1377,6 +1418,55 @@
           <button class="tx-btn tx-btn-primary" (click)="salvarConfiguracoes()" [disabled]="salvandoConfiguracoes">
             <span *ngIf="salvandoConfiguracoes" class="tx-spinner"></span>
             {{ salvandoConfiguracoes ? 'Salvando...' : 'Salvar Configurações' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="tx-panel" style="max-width: 560px; margin-top: 24px;">
+        <div class="tx-panel-head">
+          <div>
+            <h2 class="tx-panel-title">Catálogo de Serviços</h2>
+            <p class="tx-panel-caption">
+              Cada serviço tem seu próprio ciclo de recompra esperado — o mesmo cliente pode
+              estar atrasado na revisão e em dia na manutenção ao mesmo tempo.
+            </p>
+          </div>
+        </div>
+
+        <div class="tx-servico-lista" *ngIf="servicos.length > 0">
+          <div class="tx-servico-item" *ngFor="let servico of servicos">
+            <div>
+              <div class="tx-servico-item-nome">{{ servico.nome }}</div>
+              <div class="tx-servico-item-ciclo">
+                {{ servico.dias_ciclo ? servico.dias_ciclo + ' dias de ciclo esperado' : 'Ciclo ainda não definido' }}
+              </div>
+            </div>
+            <button class="tx-servico-item-excluir" (click)="excluirServico(servico)" title="Excluir serviço">
+              <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                <path d="M10 12h4"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <p class="tx-panel-note" *ngIf="servicos.length === 0">Nenhum serviço cadastrado ainda.</p>
+
+        <div class="tx-form-row" style="margin-top: 16px;">
+          <div class="tx-field">
+            <label class="tx-field-label" for="tx-novo-servico-nome">Nome do serviço</label>
+            <input id="tx-novo-servico-nome" type="text" class="tx-input" [(ngModel)]="novoServicoNome" placeholder="Ex: Revisão">
+          </div>
+          <div class="tx-field">
+            <label class="tx-field-label" for="tx-novo-servico-ciclo">Ciclo esperado em dias (opcional)</label>
+            <input id="tx-novo-servico-ciclo" type="number" class="tx-input" min="1" [(ngModel)]="novoServicoCiclo" placeholder="Ex: 180">
+          </div>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <button class="tx-btn tx-btn-primary" (click)="adicionarServico()" [disabled]="salvandoServico">
+            <span *ngIf="salvandoServico" class="tx-spinner"></span>
+            {{ salvandoServico ? 'Salvando...' : 'Adicionar Serviço' }}
           </button>
         </div>
       </div>

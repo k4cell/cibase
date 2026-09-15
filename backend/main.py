@@ -40,7 +40,7 @@ def verificar_token(credenciais: HTTPAuthorizationCredentials = Depends(_esquema
 # ==============================================================================
 app = FastAPI(
     title="Motor Backend - Projeto Tixa",
-    version="0.12.0",
+    version="0.13.0",
     dependencies=[Depends(verificar_token)]  # exige token válido em toda rota
 )
 
@@ -65,6 +65,14 @@ class NovoCliente(BaseModel):
 class NovaVenda(BaseModel):
     cliente_id: int
     valor: float
+    servico_id: int | None = None
+
+class NovoServico(BaseModel):
+    """ Catálogo de serviços da empresa -- dias_ciclo é o nível 1 do fallback
+    de ciclo esperado do motor de recomendação (a regra que a própria empresa
+    configura pra aquele serviço, antes de cair pro ciclo do cliente/base). """
+    nome: str
+    dias_ciclo: int | None = None
 
 class ConfiguracoesAtualizacao(BaseModel):
     """ Régua de relacionamento: em quantos dias sem comprar um cliente vira
@@ -143,6 +151,101 @@ def atualizar_configuracoes(config: ConfiguracoesAtualizacao):
         return {"erro": f"Erro ao atualizar configurações: {erro}"}
 
 # ==============================================================================
+# CATÁLOGO DE SERVIÇOS (motor de recomendação: unidade = cliente + serviço)
+# ==============================================================================
+@app.get("/servicos")
+def listar_servicos():
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+        cursor.execute("SELECT id, nome, dias_ciclo FROM servicos ORDER BY nome;")
+        linhas = cursor.fetchall()
+        cursor.close()
+        conexao.close()
+        return {"servicos": [{"id": l[0], "nome": l[1], "dias_ciclo": l[2]} for l in linhas]}
+    except Exception as erro:
+        return {"erro": f"Erro ao buscar serviços: {erro}"}
+
+@app.post("/servicos")
+def criar_servico(servico: NovoServico):
+    nome = servico.nome.strip()
+    if not nome:
+        return {"erro": "O nome do serviço não pode ficar em branco."}
+    if servico.dias_ciclo is not None and servico.dias_ciclo <= 0:
+        return {"erro": "O ciclo esperado precisa ser maior que zero."}
+
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+        cursor.execute(
+            "INSERT INTO servicos (nome, dias_ciclo) VALUES (%s, %s) RETURNING id;",
+            (nome, servico.dias_ciclo)
+        )
+        novo_id = cursor.fetchone()[0]
+        conexao.commit()
+        cursor.close()
+        conexao.close()
+        return {"mensagem": "Serviço cadastrado com sucesso!", "id": novo_id}
+    except psycopg2.errors.UniqueViolation:
+        return {"erro": f"Já existe um serviço chamado '{nome}'."}
+    except Exception as erro:
+        return {"erro": f"Erro ao cadastrar serviço: {erro}"}
+
+@app.put("/servicos/{servico_id}")
+def atualizar_servico(servico_id: int, servico: NovoServico):
+    nome = servico.nome.strip()
+    if not nome:
+        return {"erro": "O nome do serviço não pode ficar em branco."}
+    if servico.dias_ciclo is not None and servico.dias_ciclo <= 0:
+        return {"erro": "O ciclo esperado precisa ser maior que zero."}
+
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+        cursor.execute(
+            "UPDATE servicos SET nome = %s, dias_ciclo = %s WHERE id = %s;",
+            (nome, servico.dias_ciclo, servico_id)
+        )
+        linhas_afetadas = cursor.rowcount
+        conexao.commit()
+        cursor.close()
+        conexao.close()
+
+        if linhas_afetadas == 0: return {"erro": "Serviço não encontrado."}
+        return {"mensagem": "Serviço atualizado com sucesso!"}
+    except psycopg2.errors.UniqueViolation:
+        return {"erro": f"Já existe um serviço chamado '{nome}'."}
+    except Exception as erro:
+        return {"erro": f"Erro ao atualizar serviço: {erro}"}
+
+@app.delete("/servicos/{servico_id}")
+def excluir_servico(servico_id: int):
+    """ Só apaga se nenhuma venda usa esse serviço -- a FK de vendas.servico_id
+    não tem CASCADE, então tentar apagar um serviço em uso já falharia sozinho;
+    aqui só transformamos isso numa mensagem legível em vez de erro de banco. """
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+        cursor.execute("SELECT COUNT(*) FROM vendas WHERE servico_id = %s;", (servico_id,))
+        em_uso = cursor.fetchone()[0]
+        if em_uso > 0:
+            cursor.close()
+            conexao.close()
+            texto_vendas = "1 venda registrada" if em_uso == 1 else f"{em_uso} vendas registradas"
+            return {"erro": f"Esse serviço tem {texto_vendas} e não pode ser excluído."}
+
+        cursor.execute("DELETE FROM servicos WHERE id = %s;", (servico_id,))
+        linhas_afetadas = cursor.rowcount
+        conexao.commit()
+        cursor.close()
+        conexao.close()
+
+        if linhas_afetadas == 0: return {"erro": "Serviço não encontrado."}
+        return {"mensagem": "Serviço excluído com sucesso!"}
+    except Exception as erro:
+        return {"erro": f"Erro ao excluir serviço: {erro}"}
+
+# ==============================================================================
 # ROTAS DE CLIENTES
 # ==============================================================================
 def _buscar_clientes(ativo: bool):
@@ -204,7 +307,13 @@ def listar_vendas_do_cliente(cliente_id: int):
         cursor = conexao.cursor()
 
         cursor.execute(
-            "SELECT id, valor, data_da_venda FROM vendas WHERE cliente_id = %s ORDER BY data_da_venda DESC, id DESC;",
+            """
+            SELECT v.id, v.valor, v.data_da_venda, s.nome
+            FROM vendas v
+            LEFT JOIN servicos s ON s.id = v.servico_id
+            WHERE v.cliente_id = %s
+            ORDER BY v.data_da_venda DESC, v.id DESC;
+            """,
             (cliente_id,)
         )
         vendas_do_banco = cursor.fetchall()
@@ -212,7 +321,12 @@ def listar_vendas_do_cliente(cliente_id: int):
         conexao.close()
 
         vendas_formatadas = [
-            {"id": venda[0], "valor": float(venda[1]), "data_da_venda": str(venda[2])}
+            {
+                "id": venda[0],
+                "valor": float(venda[1]),
+                "data_da_venda": str(venda[2]),
+                "servico": venda[3] or "Não informado"
+            }
             for venda in vendas_do_banco
         ]
         return {"vendas": vendas_formatadas}
@@ -387,8 +501,8 @@ def registrar_venda(venda: NovaVenda):
         conexao = conectar_banco()
         cursor = conexao.cursor()
         
-        comando_sql = "INSERT INTO vendas (cliente_id, valor, data_da_venda) VALUES (%s, %s, CURRENT_DATE);"
-        cursor.execute(comando_sql, (venda.cliente_id, venda.valor))
+        comando_sql = "INSERT INTO vendas (cliente_id, valor, servico_id, data_da_venda) VALUES (%s, %s, %s, CURRENT_DATE);"
+        cursor.execute(comando_sql, (venda.cliente_id, venda.valor, venda.servico_id))
         
         conexao.commit()
         cursor.close()
@@ -625,6 +739,7 @@ REGRAS_CABECALHO = [
     (("cpf",), "cpf"),
     (("telefone", "celular", "whatsapp", "fone"), "telefone"),
     (("nome",), "nome"),
+    (("servico", "produto"), "servico"),
     (("valor", "receita"), "valor"),
 ]
 
@@ -722,12 +837,40 @@ def _detectar_abas(conteudo: bytes):
 
     return aba_clientes, aba_vendas, colunas_por_aba
 
+def _resolver_servico_id(nome_servico: str, cursor, cache: dict) -> int | None:
+    """ Casa o texto da planilha com um serviço do catálogo pelo nome (sem
+    diferenciar maiúscula/espaço nas pontas); cria um novo (sem dias_ciclo
+    definido) se ainda não existir, pra não travar a importação esperando
+    cadastro manual prévio. `cache` evita repetir a mesma consulta/criação
+    pra cada linha da planilha que citar o mesmo serviço. """
+    nome = (nome_servico or "").strip()
+    if not nome:
+        return None
+
+    chave = nome.lower()
+    if chave in cache:
+        return cache[chave]
+
+    cursor.execute("SELECT id FROM servicos WHERE LOWER(nome) = %s;", (chave,))
+    linha = cursor.fetchone()
+    if linha:
+        cache[chave] = linha[0]
+        return linha[0]
+
+    cursor.execute("INSERT INTO servicos (nome) VALUES (%s) RETURNING id;", (nome,))
+    novo_id = cursor.fetchone()[0]
+    cache[chave] = novo_id
+    return novo_id
+
 def _processar_linhas_vendas(linhas, cursor):
     """ Insere vendas casando cada linha com um cliente já cadastrado pelo CPF.
+    A coluna "Serviço" é opcional -- quando presente, casa (ou cria) no
+    catálogo de serviços; ausente, a venda fica sem serviço (servico_id nulo).
     Retorna (vendas_inseridas, sem_cliente_correspondente, dados_invalidos). """
     inseridas = 0
     sem_cliente = 0
     invalidas = 0
+    cache_servicos: dict = {}
 
     for linha in linhas:
         cpf = _texto_de_celula(linha.get("cpf"))
@@ -744,9 +887,11 @@ def _processar_linhas_vendas(linhas, cursor):
             sem_cliente += 1
             continue
 
+        servico_id = _resolver_servico_id(_texto_de_celula(linha.get("servico")), cursor, cache_servicos)
+
         cursor.execute(
-            "INSERT INTO vendas (cliente_id, valor, data_da_venda) VALUES (%s, %s, %s);",
-            (cliente[0], valor, data_venda)
+            "INSERT INTO vendas (cliente_id, valor, servico_id, data_da_venda) VALUES (%s, %s, %s, %s);",
+            (cliente[0], valor, servico_id, data_venda)
         )
         inseridas += 1
 

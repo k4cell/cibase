@@ -28,6 +28,7 @@ export class AppComponent implements OnInit {
   clienteVendaId: number | null = null;
   clienteVendaNome: string = '';
   novaVendaValor: number | null = null;
+  novaVendaServicoId: string = '';
 
   // Controle do menu de navegação (abas)
   abaAtiva: string = 'inicio';
@@ -74,6 +75,13 @@ export class AppComponent implements OnInit {
   configDiasRisco: number = 90;
   salvandoConfiguracoes: boolean = false;
 
+  // Catálogo de serviços -- motor de recomendação: a unidade passa a ser
+  // cliente + serviço, cada um com seu próprio ciclo esperado de recompra.
+  servicos: any[] = [];
+  novoServicoNome: string = '';
+  novoServicoCiclo: number | null = null;
+  salvandoServico: boolean = false;
+
   // Fila "Oportunidades de hoje" (v1) -- versão simplificada da fila de
   // recompra do doc de visão: razão do ciclo = dias sem comprar / dias_risco
   // (usando o dias_risco configurado como proxy do "ciclo esperado", já que
@@ -81,6 +89,8 @@ export class AppComponent implements OnInit {
   // que LIMITE_FILA_HOJE por dia, e só clientes com telefone e histórico.
   readonly LIMITE_FILA_HOJE = 10;
   filaHoje: any[] = [];
+  clientesAdiados: any[] = [];
+  mostrarAdiados: boolean = false;
   recuperadoNoMesAtual: number = 0;
 
   // Cor de destaque (botões, aba ativa, links) -- só a marca/ação, nunca o
@@ -284,6 +294,7 @@ export class AppComponent implements OnInit {
       this.carregarRecuperadoNoMes();
       this.carregarClientes();
       this.carregarClientesArquivados();
+      this.carregarServicos();
     } catch (erro: any) {
       this.carregandoLogin = false;
       this.mostrarToast(this.mensagemErroLogin(erro?.code), '#dc3545');
@@ -711,6 +722,58 @@ export class AppComponent implements OnInit {
     });
   }
 
+  carregarServicos() {
+    this.http.get<any>('http://127.0.0.1:8000/servicos').subscribe({
+      next: (dados) => {
+        this.servicos = dados.servicos || [];
+        this.cdr.detectChanges();
+      },
+      error: (erro) => this.mostrarToast('Falha ao carregar o catálogo de serviços.', '#dc3545')
+    });
+  }
+
+  adicionarServico() {
+    if (!this.novoServicoNome.trim()) {
+      this.mostrarToast('Dê um nome ao serviço.', '#ffc107');
+      return;
+    }
+
+    this.salvandoServico = true;
+    const dados = { nome: this.novoServicoNome.trim(), dias_ciclo: this.novoServicoCiclo || null };
+
+    this.http.post<any>('http://127.0.0.1:8000/servicos', dados).subscribe({
+      next: (resposta) => {
+        this.salvandoServico = false;
+        if (resposta.erro) {
+          this.mostrarToast(resposta.erro, '#ffc107');
+        } else {
+          this.mostrarToast('Serviço cadastrado!', '#28a745');
+          this.novoServicoNome = '';
+          this.novoServicoCiclo = null;
+          this.carregarServicos();
+        }
+      },
+      error: (erro) => {
+        this.salvandoServico = false;
+        this.mostrarToast('Falha ao cadastrar o serviço.', '#dc3545');
+      }
+    });
+  }
+
+  excluirServico(servico: any) {
+    this.http.delete<any>(`http://127.0.0.1:8000/servicos/${servico.id}`).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) {
+          this.mostrarToast(resposta.erro, '#ffc107');
+        } else {
+          this.mostrarToast('Serviço excluído.', '#28a745');
+          this.carregarServicos();
+        }
+      },
+      error: (erro) => this.mostrarToast('Falha ao excluir o serviço.', '#dc3545')
+    });
+  }
+
   // Valor do <select>. Períodos curtos mostram mais detalhe (blocos de semana(s))
   // em vez de virar só 3 ou 6 pontos no gráfico:
   // 3m -> 12 blocos de 1 semana | 6m -> 13 blocos de 2 semanas | 12m -> 12 meses | 5a -> 5 anos
@@ -895,9 +958,10 @@ export class AppComponent implements OnInit {
   }
 
   montarFilaDeHoje() {
-    if (!this.clientes.length) { this.filaHoje = []; return; }
+    if (!this.clientes.length) { this.filaHoje = []; this.clientesAdiados = []; return; }
 
     const hoje = new Date().toISOString().slice(0, 10);
+    this.montarClientesAdiados(hoje);
     const faixasValor = this.calcularFaixas('valor_recuperado');
     const faixasFrequencia = this.calcularFaixas('total_compras');
 
@@ -931,6 +995,38 @@ export class AppComponent implements OnInit {
       .slice(0, this.LIMITE_FILA_HOJE);
 
     this.filaHoje = candidatos;
+  }
+
+  // Quem foi adiado/recusado e ainda não venceu -- some da fila sozinho, mas
+  // precisa continuar visível em algum lugar pra dar pra conferir/desfazer.
+  private montarClientesAdiados(hoje: string) {
+    this.clientesAdiados = this.clientes
+      .filter(cliente => cliente.proximo_contato_em && cliente.proximo_contato_em > hoje)
+      .map(cliente => {
+        const dataRetorno = new Date(cliente.proximo_contato_em + 'T00:00:00');
+        const diasRestantes = Math.ceil((dataRetorno.getTime() - new Date(hoje + 'T00:00:00').getTime()) / (1000 * 3600 * 24));
+        return { cliente, diasRestantes, textoRetorno: this.textoRetorno(diasRestantes) };
+      })
+      .sort((a, b) => a.diasRestantes - b.diasRestantes);
+  }
+
+  private textoRetorno(dias: number): string {
+    if (dias <= 1) return 'Volta amanhã';
+    return `Volta em ${dias} dias`;
+  }
+
+  trazerDeVoltaAgora(item: any) {
+    this.http.put<any>(`http://127.0.0.1:8000/clientes/${item.cliente.id}/adiar`, { dias: 0 }).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) {
+          this.mostrarToast('Erro: ' + resposta.erro, '#dc3545');
+          return;
+        }
+        this.mostrarToast(`${item.cliente.nome} volta a aparecer na fila.`, '#28a745');
+        this.carregarClientes();
+      },
+      error: (erro) => this.mostrarToast('Falha ao trazer o cliente de volta.', '#dc3545')
+    });
   }
 
   enviarMensagemFila(item: any) {
@@ -970,7 +1066,8 @@ export class AppComponent implements OnInit {
 
     const dadosVenda = {
       cliente_id: this.clienteVendaId,
-      valor: this.novaVendaValor
+      valor: this.novaVendaValor,
+      servico_id: this.novaVendaServicoId ? parseInt(this.novaVendaServicoId, 10) : null
     };
 
     this.fecharModalVenda();
@@ -1085,13 +1182,15 @@ export class AppComponent implements OnInit {
   abrirModalVenda(cliente: any) {
     this.clienteVendaId = cliente.id;
     this.clienteVendaNome = cliente.nome;
-    this.novaVendaValor = null; 
+    this.novaVendaValor = null;
+    this.novaVendaServicoId = '';
   }
 
   fecharModalVenda() {
     this.clienteVendaId = null;
     this.clienteVendaNome = '';
     this.novaVendaValor = null;
+    this.novaVendaServicoId = '';
   }
 
   mostrarToast(mensagem: string, cor: string = '#28a745') {

@@ -35,6 +35,18 @@ INSERT INTO configuracoes (dias_atencao, dias_risco) VALUES (30, 90);
 -- mecanismo pros dois casos, só muda a quantidade de dias empurrada).
 -- ALTER TABLE clientes ADD COLUMN IF NOT EXISTS proximo_contato_em DATE;
 
+-- Migração (v0.13.0): motor de recomendação -- a unidade passa a ser
+-- cliente + serviço (documento "motor de recomendação"). Catálogo fixo
+-- configurado pela empresa: dias_ciclo aqui é o nível 1 do fallback de ciclo
+-- esperado (regra da empresa, antes de cair pro ciclo do próprio cliente,
+-- de pares do mesmo serviço, ou da mediana da base).
+CREATE TABLE servicos (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL UNIQUE,
+    dias_ciclo INT
+);
+-- ALTER TABLE vendas ADD COLUMN IF NOT EXISTS servico_id INT REFERENCES servicos(id);
+
 
 -- Cadastrando 5 clientes fictícios
 INSERT INTO clientes (nome, telefone) VALUES 
