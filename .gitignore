@@ -7,6 +7,10 @@ env/
 # Firebase -- chave de serviço do Admin SDK (secreta, nunca vai pro git)
 backend/firebase-service-account.json
 
+# Banco de dados -- credenciais reais (host/senha do Supabase), nunca vão pro git.
+# backend/.env.example fica versionado como modelo do que precisa preencher.
+backend/.env
+
 # Angular / Node
 node_modules/
 dist/
