@@ -91,6 +91,7 @@ export class AppComponent implements OnInit {
   clientesAdiados: any[] = [];
   mostrarAdiados: boolean = false;
   recuperadoNoMesAtual: number = 0;
+  filtroServicoFilaId: string = '';
 
   // Cor de destaque (botões, aba ativa, links) -- só a marca/ação, nunca o
   // verde de receita nem o vermelho de risco, que têm significado próprio.
@@ -958,8 +959,13 @@ export class AppComponent implements OnInit {
     this.carregarAdiadosMotor();
   }
 
+  filtrarFilaPorServico() {
+    this.carregarFilaMotor();
+  }
+
   private carregarFilaMotor() {
-    this.http.get<any>(`http://127.0.0.1:8000/motor/fila?tamanho=${this.LIMITE_FILA_HOJE}`).subscribe({
+    const filtroServico = this.filtroServicoFilaId ? `&servico_id=${this.filtroServicoFilaId}` : '';
+    this.http.get<any>(`http://127.0.0.1:8000/motor/fila?tamanho=${this.LIMITE_FILA_HOJE}${filtroServico}`).subscribe({
       next: (dados) => {
         if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
         this.filaHoje = (dados.fila || []).map((linha: any) => this.montarItemFila(linha));

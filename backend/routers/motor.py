@@ -44,16 +44,22 @@ def obter_classificacao():
         return {"erro": f"Erro ao calcular classificação: {erro}"}
 
 @router.get("/motor/fila")
-def obter_fila(modo: str = "recuperacao", tamanho: int = 10):
+def obter_fila(modo: str = "recuperacao", tamanho: int = 10, servico_id: int | None = None):
     """ Fila final do motor (Fases 1+2+3): já ordenada, colapsada pra 1 linha
     por pessoa e cortada no tamanho pedido -- é o que a aba "Hoje" consome
-    (Fase 5). `modo` aceita "recuperacao" (padrão) ou "antecipacao". """
+    (Fase 5). `modo` aceita "recuperacao" (padrão) ou "antecipacao".
+    `servico_id`, se passado, filtra a fila pra mostrar só aquele serviço --
+    o filtro é aplicado ANTES do corte de tamanho, pra sempre completar até
+    `tamanho` itens daquele serviço (em vez de filtrar depois de já ter
+    cortado uma mistura de serviços diferentes). """
     try:
         conexao = conectar_banco()
         cursor = conexao.cursor()
 
         linhas = classificar_todos(cursor)
         linhas = aplicar_travas(linhas, cursor)
+        if servico_id is not None:
+            linhas = [linha for linha in linhas if linha["servico_id"] == servico_id]
         linhas = montar_fila(linhas, cursor, modo=modo, tamanho_fila=tamanho)
 
         if linhas:

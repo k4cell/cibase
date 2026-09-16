@@ -657,6 +657,14 @@
         <p class="tx-page-subtitle">Fila pronta pra contatar, com motivo e mensagem já sugeridos.</p>
       </div>
 
+      <div class="tx-toolbar">
+        <p class="tx-toolbar-info">Filtrar por serviço:</p>
+        <select class="tx-period-select" [(ngModel)]="filtroServicoFilaId" (ngModelChange)="filtrarFilaPorServico()">
+          <option value="">Todos os serviços</option>
+          <option *ngFor="let servico of servicos" [value]="servico.id">{{ servico.nome }}</option>
+        </select>
+      </div>
+
       <div class="tx-kpi-grid tx-kpi-grid--compacta">
         <div class="tx-kpi-card tx-kpi-card--info">
           <div>
