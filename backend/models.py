@@ -36,3 +36,21 @@ class AdiarContato(BaseModel):
     hoje até essa data. Usado tanto pra "adiar" (poucos dias) quanto pra
     "recusou" (bem mais dias) -- é o mesmo mecanismo, só muda a quantidade. """
     dias: int
+
+
+class AlternarFlag(BaseModel):
+    """ Corpo genérico pra ligar/desligar uma trava manual do cliente
+    (não contatar, problema aberto) -- sempre reversível: um clique errado
+    não pode esconder alguém da fila pra sempre sem ninguém perceber. """
+    valor: bool
+
+
+class NovoContato(BaseModel):
+    """ Registra o resultado de um contato feito numa linha (cliente+serviço)
+    da fila do motor. `resultado` é um de: silencio, adiar_com_data,
+    adiar_sem_data, recusou. `data_reentrada_manual` (formato YYYY-MM-DD) só
+    é usada -- e é obrigatória -- quando resultado é "adiar_com_data". """
+    cliente_id: int
+    servico_id: int
+    resultado: str
+    data_reentrada_manual: str | None = None

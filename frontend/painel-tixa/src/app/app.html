@@ -687,6 +687,20 @@
             </svg>
           </div>
         </div>
+
+        <button class="tx-kpi-card tx-kpi-card--warning tx-kpi-card--clicavel" *ngIf="clientesAdiados.length > 0" (click)="mostrarAdiados = !mostrarAdiados">
+          <div>
+            <h3 class="tx-kpi-label">Adiados</h3>
+            <h2 class="tx-kpi-value">{{ clientesAdiados.length }}</h2>
+            <p class="tx-kpi-foot">{{ mostrarAdiados ? 'Clique para esconder' : 'Clique para ver quem' }}</p>
+          </div>
+          <div class="tx-kpi-icon tx-kpi-icon--warning">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 6v6l4 2"></path>
+            </svg>
+          </div>
+        </button>
       </div>
 
       <div class="tx-fila-lista" *ngIf="filaHoje.length > 0; else filaVazia">
@@ -708,9 +722,10 @@
           </div>
 
           <div class="tx-fila-chips">
-            <span class="tx-badge">{{ item.faixaFrequencia }}</span>
+            <span class="tx-badge">{{ item.servicoNome }}</span>
+            <span class="tx-badge">{{ item.status }}</span>
             <span class="tx-badge">{{ item.faixaValor }}</span>
-            <span class="tx-badge">{{ item.statusTexto }}</span>
+            <span class="tx-badge" *ngIf="item.baixaConfianca">Estimativa</span>
           </div>
 
           <p class="tx-fila-motivo">{{ item.motivo }}</p>
@@ -739,39 +754,21 @@
               </svg>
             </div>
             <div class="tx-empty-state-title">Nenhuma oportunidade pra hoje</div>
-            <div class="tx-empty-state-subtitle">Todo mundo em dia, ou os prazos em Configurações estão exigentes demais.</div>
+            <div class="tx-empty-state-subtitle">Todo mundo em dia, ou aguardando o prazo de retorno.</div>
           </div>
         </div>
       </ng-template>
 
-      <div class="tx-adiados-secao" *ngIf="clientesAdiados.length > 0">
-        <button class="tx-adiados-toggle" (click)="mostrarAdiados = !mostrarAdiados">
-          <div class="tx-adiados-toggle-icone">
-            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="M12 6v6l4 2"></path>
-            </svg>
-          </div>
-          <div class="tx-adiados-toggle-texto">
-            <span class="tx-adiados-toggle-titulo">Adiados ({{ clientesAdiados.length }})</span>
-            <span class="tx-adiados-toggle-desc">Clientes que saíram da fila por um tempo — adiados ou recusados</span>
-          </div>
-          <svg class="tx-icon tx-adiados-seta" [class.is-aberta]="mostrarAdiados" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m9 18 6-6-6-6"></path>
-          </svg>
-        </button>
-
-        <div class="tx-adiados-lista" *ngIf="mostrarAdiados">
-          <div class="tx-adiados-item" *ngFor="let item of clientesAdiados">
-            <div class="tx-client-cell">
-              <div class="tx-avatar">{{ item.cliente.nome.charAt(0).toUpperCase() }}</div>
-              <div>
-                <div class="tx-client-name">{{ item.cliente.nome }}</div>
-                <div class="tx-fila-subtitulo">{{ item.textoRetorno }} · {{ item.cliente.proximo_contato_em }}</div>
-              </div>
+      <div class="tx-adiados-lista" *ngIf="mostrarAdiados && clientesAdiados.length > 0">
+        <div class="tx-adiados-item" *ngFor="let item of clientesAdiados">
+          <div class="tx-client-cell">
+            <div class="tx-avatar">{{ item.clienteNome.charAt(0).toUpperCase() }}</div>
+            <div>
+              <div class="tx-client-name">{{ item.clienteNome }}</div>
+              <div class="tx-fila-subtitulo">{{ item.servicoNome }} · {{ item.textoRetorno }}</div>
             </div>
-            <button class="tx-btn tx-btn-secondary" (click)="trazerDeVoltaAgora(item)">Trazer de volta</button>
           </div>
+          <button class="tx-btn tx-btn-secondary" (click)="trazerDeVoltaAgora(item)">Trazer de volta</button>
         </div>
       </div>
 

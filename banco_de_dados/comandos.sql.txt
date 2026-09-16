@@ -47,6 +47,33 @@ CREATE TABLE servicos (
 );
 -- ALTER TABLE vendas ADD COLUMN IF NOT EXISTS servico_id INT REFERENCES servicos(id);
 
+-- Migração (Fase 2 do motor): travas manuais "não contatar" e "problema
+-- aberto" (documento "motor-de-recomendacao.pdf", seção 3 -- travas -- e
+-- seção 6 -- persistência). São por CLIENTE (não por linha cliente+serviço):
+-- se a pessoa pediu pra não ser mais contatada, ou tem uma reclamação aberta,
+-- isso vale pra todos os serviços dela, não só um. Precisam ser reversíveis
+-- ("desfazer é obrigatório" -- um clique errado não pode esconder alguém
+-- para sempre).
+-- ALTER TABLE clientes ADD COLUMN IF NOT EXISTS nao_contatar BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE clientes ADD COLUMN IF NOT EXISTS problema_aberto BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Migração (Fase 4 do motor): tabela de contatos (documento
+-- "motor-de-recomendacao.pdf", seção 6 -- persistência). Guarda cada
+-- contato feito numa linha cliente+serviço; data_reentrada é derivada do
+-- resultado (silêncio = 1/4 do ciclo, recusa 1x/2x = 1/2 ciclos com teto de
+-- 12/18 meses, recusa 3x vira "não contatar" e não grava reentrada). Os
+-- contadores de recusas (por linha) e silêncios (por CLIENTE, cruzando
+-- todos os serviços -- usado pra suspeitar de telefone errado) são
+-- derivados consultando esse histórico, não guardados à parte.
+CREATE TABLE contatos (
+    id SERIAL PRIMARY KEY,
+    cliente_id INT NOT NULL REFERENCES clientes(id),
+    servico_id INT NOT NULL REFERENCES servicos(id),
+    data_contato DATE NOT NULL DEFAULT CURRENT_DATE,
+    resultado VARCHAR(30) NOT NULL,
+    data_reentrada DATE
+);
+
 
 -- Cadastrando 5 clientes fictícios
 INSERT INTO clientes (nome, telefone) VALUES 

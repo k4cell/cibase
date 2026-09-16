@@ -4,11 +4,10 @@ __pycache__/
 venv/
 env/
 
-# Firebase -- chave de serviço do Admin SDK (secreta, nunca vai pro git)
+# Firebase -- chave de serviço do Admin SDK
 backend/firebase-service-account.json
 
-# Banco de dados -- credenciais reais (host/senha do Supabase), nunca vão pro git.
-# backend/.env.example fica versionado como modelo do que precisa preencher.
+# Banco de dados
 backend/.env
 
 # Angular / Node

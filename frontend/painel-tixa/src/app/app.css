@@ -800,7 +800,21 @@
   color: var(--tx-primary);
 }
 
+.tx-kpi-icon--warning {
+  background: var(--tx-amber-soft);
+  border-color: #b45309;
+  color: var(--tx-amber);
+}
+
 .tx-kpi-card--success .tx-kpi-value { color: var(--tx-emerald); }
+
+.tx-kpi-card--clicavel {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+}
+.tx-kpi-card--clicavel:hover { border-color: #b45309; }
 
 /* ------------------------------------------------------------------------------
    INÍCIO (HOME)
@@ -1394,62 +1408,11 @@
 }
 .tx-fila-acoes .tx-btn { flex: 1; }
 
-.tx-adiados-secao { margin-top: 20px; }
-
-.tx-adiados-toggle {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 16px 18px;
-  font-family: var(--tx-font);
-  text-align: left;
-  color: var(--tx-title);
-  background: var(--tx-surface);
-  border: 1px solid var(--tx-border);
-  border-radius: var(--tx-r-lg);
-  box-shadow: var(--tx-shadow-sm);
-  cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-.tx-adiados-toggle:hover { border-color: var(--tx-border-strong); box-shadow: var(--tx-shadow-md); }
-
-.tx-adiados-toggle-icone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  color: var(--tx-amber);
-  background: var(--tx-amber-soft);
-  border-radius: var(--tx-r-md);
-}
-
-.tx-adiados-toggle-texto {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-
-.tx-adiados-toggle-titulo { font-size: 15px; font-weight: 700; }
-
-.tx-adiados-toggle-desc {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--tx-label);
-}
-
-.tx-adiados-seta { flex-shrink: 0; color: var(--tx-faint); transition: transform 0.15s ease; }
-.tx-adiados-seta.is-aberta { transform: rotate(90deg); }
-
 .tx-adiados-lista {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 20px;
 }
 
 .tx-adiados-item {

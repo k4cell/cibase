@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter
 
 from database import conectar_banco
-from models import NovoCliente, AdiarContato
+from models import NovoCliente, AdiarContato, AlternarFlag
 
 router = APIRouter()
 
@@ -198,6 +198,57 @@ def adiar_contato(cliente_id: int, dados: AdiarContato):
 
         if linhas_afetadas == 0: return {"erro": "Cliente não encontrado ou arquivado."}
         return {"mensagem": "Contato adiado."}
+    except Exception as erro:
+        return {"erro": str(erro)}
+
+@router.put("/clientes/{cliente_id}/nao-contatar")
+def alternar_nao_contatar(cliente_id: int, dados: AlternarFlag):
+    """
+    Trava manual e permanente (até desmarcar) do motor de recomendação:
+    cliente marcado como "não contatar" nunca aparece na fila, em nenhum
+    serviço, até alguém desmarcar -- reversível de propósito.
+    """
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+
+        cursor.execute(
+            "UPDATE clientes SET nao_contatar = %s WHERE id = %s;",
+            (dados.valor, cliente_id)
+        )
+        linhas_afetadas = cursor.rowcount
+        conexao.commit()
+        cursor.close()
+        conexao.close()
+
+        if linhas_afetadas == 0: return {"erro": "Cliente não encontrado."}
+        return {"mensagem": "Marcado como não contatar." if dados.valor else "Desmarcado."}
+    except Exception as erro:
+        return {"erro": str(erro)}
+
+@router.put("/clientes/{cliente_id}/problema-aberto")
+def alternar_problema_aberto(cliente_id: int, dados: AlternarFlag):
+    """
+    Trava manual do motor de recomendação: cliente com reclamação em aberto
+    não aparece na fila até alguém marcar como resolvido. Diferente de
+    "não contatar" (permanente), essa é pensada pra ser temporária -- o
+    auto-expirar sozinho ainda não está implementado, só o marcar/desmarcar.
+    """
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+
+        cursor.execute(
+            "UPDATE clientes SET problema_aberto = %s WHERE id = %s;",
+            (dados.valor, cliente_id)
+        )
+        linhas_afetadas = cursor.rowcount
+        conexao.commit()
+        cursor.close()
+        conexao.close()
+
+        if linhas_afetadas == 0: return {"erro": "Cliente não encontrado."}
+        return {"mensagem": "Marcado como problema aberto." if dados.valor else "Marcado como resolvido."}
     except Exception as erro:
         return {"erro": str(erro)}
 

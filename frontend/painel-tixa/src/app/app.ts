@@ -82,11 +82,10 @@ export class AppComponent implements OnInit {
   novoServicoCiclo: number | null = null;
   salvandoServico: boolean = false;
 
-  // Fila "Oportunidades de hoje" (v1) -- versão simplificada da fila de
-  // recompra do doc de visão: razão do ciclo = dias sem comprar / dias_risco
-  // (usando o dias_risco configurado como proxy do "ciclo esperado", já que
-  // ainda não calculamos ciclo por cliente/serviço). Nunca mostra mais do
-  // que LIMITE_FILA_HOJE por dia, e só clientes com telefone e histórico.
+  // Fila "Oportunidades de hoje" -- consome o motor de recomendação
+  // (GET /motor/fila no backend: classificação por cliente+serviço, travas
+  // e ordenação conforme o documento "motor-de-recomendacao.pdf"). Nunca
+  // mostra mais do que LIMITE_FILA_HOJE por dia.
   readonly LIMITE_FILA_HOJE = 10;
   filaHoje: any[] = [];
   clientesAdiados: any[] = [];
@@ -418,6 +417,22 @@ export class AppComponent implements OnInit {
     const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
     if (!regexEmail.test(this.novoEmail)) {
       this.mostrarToast('E-mail inválido.', '#dc3545');
+      return;
+    }
+
+    // O regex acima aceita qualquer TLD de 2-4 letras, então "gmail.co" passa
+    // como formato válido -- mas não existe esse domínio, é sempre um "gmail.com"
+    // digitado errado. Só barra quando bate com o NOME de um provedor conhecido
+    // seguido de ponto (evita falso positivo em domínio próprio tipo "empresa.co").
+    const dominiosConhecidos: Record<string, string> = {
+      gmail: 'gmail.com', hotmail: 'hotmail.com', outlook: 'outlook.com',
+      yahoo: 'yahoo.com', icloud: 'icloud.com', live: 'live.com'
+    };
+    const dominioDigitado = (this.novoEmail.split('@')[1] || '').toLowerCase();
+    const provedor = Object.keys(dominiosConhecidos).find(p => dominioDigitado.startsWith(p + '.'));
+    if (provedor && dominioDigitado !== dominiosConhecidos[provedor]) {
+      const usuario = this.novoEmail.split('@')[0];
+      this.mostrarToast(`E-mail inválido. Você quis dizer "${usuario}@${dominiosConhecidos[provedor]}"?`, '#dc3545');
       return;
     }
 
@@ -930,92 +945,83 @@ export class AppComponent implements OnInit {
   }
 
   // ==============================================================================
-  // FILA "OPORTUNIDADES DE HOJE" (v1)
+  // FILA "OPORTUNIDADES DE HOJE" (Fase 5 do motor de recomendação)
   //
-  // Versão simplificada da fila descrita no doc de visão do negócio: razão do
-  // ciclo = dias sem comprar / dias_risco configurado (ainda não temos ciclo
-  // por cliente/serviço, então usamos o prazo único do negócio como "ciclo
-  // esperado"). Ordena do mais atrasado pro menos, capado em LIMITE_FILA_HOJE.
-  // Faixa de valor e de frequência vêm da posição do cliente na própria base
-  // (20/60/20%), igual ao conceito de "faixa" do doc -- aqui aplicado também
-  // à frequência de compra, por falta de um campo de fidelidade dedicado.
+  // Não calcula mais nada aqui -- só consome o motor do backend
+  // (classificação por cliente+serviço, travas e ordenação, conforme o
+  // documento "motor-de-recomendacao.pdf"). O nome do método continua
+  // "montarFilaDeHoje" pra quem já chamava ele (carregarClientes,
+  // carregarConfiguracoes) não precisar mudar.
   // ==============================================================================
-  private diasSemComprar(cliente: any): number | null {
-    if (!cliente.ultima_compra || cliente.ultima_compra === 'Sem vendas') return null;
-    const dataCompra = new Date(cliente.ultima_compra);
-    const hoje = new Date();
-    return Math.floor((hoje.getTime() - dataCompra.getTime()) / (1000 * 3600 * 24));
-  }
-
-  private calcularFaixas(campo: 'valor_recuperado' | 'total_compras'): Map<number, string> {
-    const ativos = this.clientes.filter(c => c[campo] > 0);
-    const ordenados = [...ativos].sort((a, b) => b[campo] - a[campo]);
-    const faixaPorId = new Map<number, string>();
-    const corteAlto = Math.ceil(ordenados.length * 0.2);
-    const corteBaixo = Math.floor(ordenados.length * 0.8);
-
-    const rotulos = campo === 'valor_recuperado'
-      ? { alto: 'Alto valor', medio: 'Médio valor', baixo: 'Baixo valor' }
-      : { alto: 'Fiel', medio: 'Frequente', baixo: 'Ocasional' };
-
-    ordenados.forEach((cliente, indice) => {
-      const rotulo = indice < corteAlto ? rotulos.alto : indice >= corteBaixo ? rotulos.baixo : rotulos.medio;
-      faixaPorId.set(cliente.id, rotulo);
-    });
-    return faixaPorId;
-  }
-
   montarFilaDeHoje() {
-    if (!this.clientes.length) { this.filaHoje = []; this.clientesAdiados = []; return; }
-
-    const hoje = new Date().toISOString().slice(0, 10);
-    this.montarClientesAdiados(hoje);
-    const faixasValor = this.calcularFaixas('valor_recuperado');
-    const faixasFrequencia = this.calcularFaixas('total_compras');
-
-    const candidatos = this.clientes
-      .map(cliente => {
-        const dias = this.diasSemComprar(cliente);
-        return { cliente, dias };
-      })
-      .filter(({ cliente, dias }) => {
-        if (dias === null || !cliente.telefone) return false; // sem histórico ou sem contato = baixa confiança, fica de fora
-        if (dias <= this.configDiasAtencao) return false; // em dia, não precisa de nada
-        if (cliente.proximo_contato_em && cliente.proximo_contato_em > hoje) return false; // adiado/recusado recentemente
-        return true;
-      })
-      .map(({ cliente, dias }) => {
-        const atrasado = dias! > this.configDiasRisco;
-        return {
-          cliente,
-          dias: dias!,
-          razaoCiclo: dias! / this.configDiasRisco,
-          faixaValor: faixasValor.get(cliente.id) || 'Médio valor',
-          faixaFrequencia: faixasFrequencia.get(cliente.id) || 'Ocasional',
-          statusTexto: atrasado ? `Atrasado ${dias! - this.configDiasRisco} dias` : `Vence em ${this.configDiasRisco - dias!} dias`,
-          motivo: atrasado
-            ? `Está há ${dias} dias sem comprar, e o prazo de risco configurado é ${this.configDiasRisco}.`
-            : `Está chegando no prazo de retorno: ${dias} dias sem comprar, de um ciclo de ${this.configDiasRisco}.`,
-          mensagemDraft: this.mensagemSugerida(cliente)
-        };
-      })
-      .sort((a, b) => b.razaoCiclo - a.razaoCiclo)
-      .slice(0, this.LIMITE_FILA_HOJE);
-
-    this.filaHoje = candidatos;
+    this.carregarFilaMotor();
+    this.carregarAdiadosMotor();
   }
 
-  // Quem foi adiado/recusado e ainda não venceu -- some da fila sozinho, mas
-  // precisa continuar visível em algum lugar pra dar pra conferir/desfazer.
-  private montarClientesAdiados(hoje: string) {
-    this.clientesAdiados = this.clientes
-      .filter(cliente => cliente.proximo_contato_em && cliente.proximo_contato_em > hoje)
-      .map(cliente => {
-        const dataRetorno = new Date(cliente.proximo_contato_em + 'T00:00:00');
-        const diasRestantes = Math.ceil((dataRetorno.getTime() - new Date(hoje + 'T00:00:00').getTime()) / (1000 * 3600 * 24));
-        return { cliente, diasRestantes, textoRetorno: this.textoRetorno(diasRestantes) };
-      })
-      .sort((a, b) => a.diasRestantes - b.diasRestantes);
+  private carregarFilaMotor() {
+    this.http.get<any>(`http://127.0.0.1:8000/motor/fila?tamanho=${this.LIMITE_FILA_HOJE}`).subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
+        this.filaHoje = (dados.fila || []).map((linha: any) => this.montarItemFila(linha));
+        this.cdr.detectChanges();
+      },
+      error: () => this.mostrarToast('Falha ao montar a fila de hoje.', '#dc3545')
+    });
+  }
+
+  // O motor devolve cliente_id/servico_id; o resto dos dados do cliente
+  // (telefone, valor recuperado) já está carregado em this.clientes.
+  private montarItemFila(linha: any) {
+    const cliente = this.clientes.find(c => c.id === linha.cliente_id)
+      || { id: linha.cliente_id, nome: linha.cliente_nome, telefone: '', valor_recuperado: 0 };
+
+    return {
+      cliente,
+      servicoId: linha.servico_id,
+      servicoNome: linha.servico_nome,
+      dias: linha.dias_sem_comprar,
+      status: linha.status,
+      faixaValor: linha.faixa_valor,
+      baixaConfianca: linha.baixa_confianca,
+      motivo: this.motivoFila(linha),
+      mensagemDraft: this.mensagemSugeridaFila(cliente.nome, linha.status)
+    };
+  }
+
+  private motivoFila(linha: any): string {
+    const base = `Está há ${linha.dias_sem_comprar} dias sem comprar (ciclo esperado: ${linha.ciclo_esperado} dias).`;
+    return linha.baixa_confianca ? `${base} Estimativa com poucos dados ainda.` : base;
+  }
+
+  // Mensagem específica da fila do motor, baseada no status (Atrasado /
+  // Adormecido / Recompra próxima / Frio) -- diferente da mensagemSugerida()
+  // geral (usada na Ficha e nas tabelas), que continua baseada no farol de
+  // risco configurável e não deve mudar.
+  private mensagemSugeridaFila(nome: string, status: string): string {
+    if (status === 'Frio') {
+      return `Olá, ${nome}! Faz bastante tempo que não nos vemos. Temos condições especiais pra você voltar, podemos conversar?`;
+    } else if (status === 'Adormecido') {
+      return `Olá, ${nome}! Tudo bem? Já faz um tempo desde a sua última visita. Podemos te ajudar com alguma coisa?`;
+    } else if (status === 'Recompra próxima') {
+      return `Oi, ${nome}! Passando pra lembrar que já está quase na hora de voltar. Quer agendar?`;
+    }
+    return `Oi, ${nome}! Tudo certo? Estamos à disposição caso precise de algo.`; // Atrasado
+  }
+
+  private carregarAdiadosMotor() {
+    this.http.get<any>('http://127.0.0.1:8000/motor/adiados').subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
+        this.clientesAdiados = (dados.adiados || []).map((item: any) => ({
+          contatoId: item.contato_id,
+          clienteNome: item.cliente_nome,
+          servicoNome: item.servico_nome,
+          textoRetorno: this.textoRetorno(item.dias_restantes)
+        }));
+        this.cdr.detectChanges();
+      },
+      error: () => this.mostrarToast('Falha ao carregar os adiados.', '#dc3545')
+    });
   }
 
   private textoRetorno(dias: number): string {
@@ -1023,44 +1029,51 @@ export class AppComponent implements OnInit {
     return `Volta em ${dias} dias`;
   }
 
+  // "Trazer de volta agora" = desfazer o último contato registrado pra essa
+  // linha (documento: "desfazer é obrigatório") -- some a trava de reentrada.
   trazerDeVoltaAgora(item: any) {
-    this.http.put<any>(`http://127.0.0.1:8000/clientes/${item.cliente.id}/adiar`, { dias: 0 }).subscribe({
+    this.http.delete<any>(`http://127.0.0.1:8000/motor/contatos/${item.contatoId}`).subscribe({
       next: (resposta) => {
-        if (resposta.erro) {
-          this.mostrarToast('Erro: ' + resposta.erro, '#dc3545');
-          return;
-        }
-        this.mostrarToast(`${item.cliente.nome} volta a aparecer na fila.`, '#28a745');
-        this.carregarClientes();
+        if (resposta.erro) { this.mostrarToast('Erro: ' + resposta.erro, '#dc3545'); return; }
+        this.mostrarToast(`${item.clienteNome} volta a aparecer na fila.`, '#28a745');
+        this.montarFilaDeHoje();
       },
-      error: (erro) => this.mostrarToast('Falha ao trazer o cliente de volta.', '#dc3545')
+      error: () => this.mostrarToast('Falha ao trazer o cliente de volta.', '#dc3545')
     });
   }
 
+  // Mandar a mensagem assume silêncio por padrão -- o documento é explícito:
+  // "o sistema não espera pra concluir que não houve resposta, assume isso
+  // desde o clique". Se a pessoa clicar em Adiar ou Recusar depois, esse
+  // registro é substituído por um mais específico.
   enviarMensagemFila(item: any) {
     window.open(this.linkWhatsApp(item.cliente.telefone, item.mensagemDraft), '_blank');
-  }
-
-  private adiarNaFila(item: any, dias: number, mensagemToast: string) {
-    this.http.put<any>(`http://127.0.0.1:8000/clientes/${item.cliente.id}/adiar`, { dias }).subscribe({
-      next: (resposta) => {
-        if (resposta.erro) {
-          this.mostrarToast('Erro: ' + resposta.erro, '#dc3545');
-          return;
-        }
-        this.filaHoje = this.filaHoje.filter(f => f.cliente.id !== item.cliente.id);
-        this.mostrarToast(mensagemToast, '#28a745');
-      },
-      error: (erro) => this.mostrarToast('Falha ao adiar o contato.', '#dc3545')
-    });
+    this.registrarContatoFila(item, 'silencio', `Mensagem enviada. Se ${item.cliente.nome} não responder, ele volta à fila automaticamente.`);
   }
 
   adiarContatoFila(item: any) {
-    this.adiarNaFila(item, this.configDiasAtencao, `${item.cliente.nome} volta à fila em ${this.configDiasAtencao} dias.`);
+    this.registrarContatoFila(item, 'adiar_sem_data', `${item.cliente.nome} volta à fila mais pra frente.`);
   }
 
   recusarContatoFila(item: any) {
-    this.adiarNaFila(item, this.configDiasRisco * 2, `${item.cliente.nome} não vai aparecer na fila por um bom tempo.`);
+    this.registrarContatoFila(item, 'recusou', `${item.cliente.nome} não vai aparecer na fila por um bom tempo.`);
+  }
+
+  private registrarContatoFila(item: any, resultado: string, mensagemToast: string) {
+    const corpo = { cliente_id: item.cliente.id, servico_id: item.servicoId, resultado };
+    this.http.post<any>('http://127.0.0.1:8000/motor/contatos', corpo).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) { this.mostrarToast('Erro: ' + resposta.erro, '#dc3545'); return; }
+
+        this.filaHoje = this.filaHoje.filter(f => !(f.cliente.id === item.cliente.id && f.servicoId === item.servicoId));
+        const texto = resposta.vira_nao_contatar
+          ? `${item.cliente.nome} recusou 3 vezes seguidas e foi marcado como "não contatar".`
+          : mensagemToast;
+        this.mostrarToast(texto, '#28a745');
+        this.carregarAdiadosMotor();
+      },
+      error: () => this.mostrarToast('Falha ao registrar o contato.', '#dc3545')
+    });
   }
 
   // ==============================================================================

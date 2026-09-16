@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from auth import verificar_token
-from routers import clientes, configuracoes, importacao, servicos, vendas
+from routers import clientes, configuracoes, importacao, motor, servicos, vendas
 
 # ==============================================================================
 # CONFIGURAÇÕES INICIAIS DA API (MOTOR TIXA)
@@ -25,3 +25,4 @@ app.include_router(servicos.router)
 app.include_router(clientes.router)
 app.include_router(vendas.router)
 app.include_router(importacao.router)
+app.include_router(motor.router)
