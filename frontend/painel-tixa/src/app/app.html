@@ -174,7 +174,7 @@
      ============================================================================== -->
 <div *ngIf="estaLogado" class="tx-shell">
 
-  <!-- NAVBAR -->
+  <!-- NAVBAR (marca + navegação + utilitários numa barra só, sem uma segunda fileira de abas) -->
   <nav class="tx-navbar">
     <div class="tx-brand-lockup">
       <div class="tx-brand-mark">
@@ -182,20 +182,53 @@
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
         </svg>
       </div>
-      <div class="tx-brand-text">
-        <span class="tx-brand-name">TIXA</span>
-        <span class="tx-brand-subtitle">Plataforma de Recuperação de Receita</span>
-      </div>
+      <span class="tx-brand-name">TIXA</span>
     </div>
 
+    <nav class="tx-tabs">
+      <button class="tx-tab" [class.is-active]="abaAtiva === 'inicio'" (click)="abaAtiva = 'inicio'">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 9.5 12 3l9 6.5"></path>
+          <path d="M5 9v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9"></path>
+        </svg>
+        Início
+      </button>
+      <button class="tx-tab" [class.is-active]="abaAtiva === 'hoje'" (click)="abaAtiva = 'hoje'">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m9 11 3 3L22 4"></path>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+        </svg>
+        Hoje
+      </button>
+      <button class="tx-tab" [class.is-active]="abaAtiva === 'recuperacao'" (click)="abaAtiva = 'recuperacao'">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <circle cx="12" cy="12" r="6"></circle>
+          <circle cx="12" cy="12" r="2"></circle>
+        </svg>
+        Painel de Recuperação
+      </button>
+      <button class="tx-tab" [class.is-active]="abaAtiva === 'receita'" (click)="abaAtiva = 'receita'">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 3v16a2 2 0 0 0 2 2h16"></path>
+          <path d="M7 16v-5"></path>
+          <path d="M12 16V8"></path>
+          <path d="M17 16v-3"></path>
+        </svg>
+        Painel da Receita
+      </button>
+      <button class="tx-tab" [class.is-active]="abaAtiva === 'clientes'" (click)="abaAtiva = 'clientes'">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        Clientes em Geral
+      </button>
+    </nav>
+
     <div class="tx-navbar-right">
-      <span class="tx-status-pill">
-        <span class="tx-status-dot"></span>
-        Sistema Operacional
-      </span>
-
-      <div class="tx-navbar-divider"></div>
-
       <div class="tx-color-picker-wrap">
         <button class="tx-color-picker-btn" (click)="mostrarSeletorCor = !mostrarSeletorCor" title="Cor de destaque" aria-label="Escolher cor de destaque">
           <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -239,11 +272,34 @@
         </svg>
       </button>
 
-      <div class="tx-user-chip">
-        <div class="tx-user-avatar">AD</div>
-        <div class="tx-user-meta">
-          <span class="tx-user-name">Administrador</span>
-          <span class="tx-user-role">Conta principal</span>
+      <div class="tx-user-menu-wrap">
+        <button class="tx-user-chip" (click)="mostrarMenuUsuario = !mostrarMenuUsuario">
+          <div class="tx-user-avatar">AD</div>
+          <div class="tx-user-meta">
+            <span class="tx-user-name">Administrador</span>
+            <span class="tx-user-role">Conta principal</span>
+          </div>
+        </button>
+
+        <div class="tx-color-picker-backdrop" *ngIf="mostrarMenuUsuario" (click)="mostrarMenuUsuario = false"></div>
+
+        <div class="tx-color-picker-menu tx-user-menu" *ngIf="mostrarMenuUsuario">
+          <button class="tx-color-picker-item" (click)="abaAtiva = 'configuracoes'; mostrarMenuUsuario = false">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Configurações
+          </button>
+          <button class="tx-color-picker-item" (click)="mudarUsuario()">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            Mudar de usuário
+          </button>
         </div>
       </div>
 
@@ -259,65 +315,6 @@
   </nav>
 
   <div class="tx-main">
-    <!-- MENU DE NAVEGAÇÃO -->
-    <nav class="tx-tabs">
-      <button class="tx-tab" [class.is-active]="abaAtiva === 'inicio'" (click)="abaAtiva = 'inicio'">
-        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M3 9.5 12 3l9 6.5"></path>
-          <path d="M5 9v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9"></path>
-        </svg>
-        Início
-      </button>
-      <button class="tx-tab" [class.is-active]="abaAtiva === 'hoje'" (click)="abaAtiva = 'hoje'">
-        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="m9 11 3 3L22 4"></path>
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-        </svg>
-        Hoje
-      </button>
-      <button class="tx-tab" [class.is-active]="abaAtiva === 'recuperacao'" (click)="abaAtiva = 'recuperacao'">
-        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="10"></circle>
-          <circle cx="12" cy="12" r="6"></circle>
-          <circle cx="12" cy="12" r="2"></circle>
-        </svg>
-        Painel de Recuperação
-      </button>
-      <button class="tx-tab" [class.is-active]="abaAtiva === 'receita'" (click)="abaAtiva = 'receita'">
-        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M3 3v16a2 2 0 0 0 2 2h16"></path>
-          <path d="M7 16v-5"></path>
-          <path d="M12 16V8"></path>
-          <path d="M17 16v-3"></path>
-        </svg>
-        Painel da Receita
-      </button>
-      <button class="tx-tab" [class.is-active]="abaAtiva === 'clientes'" (click)="abaAtiva = 'clientes'">
-        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-          <circle cx="9" cy="7" r="4"></circle>
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-        </svg>
-        Clientes em Geral
-      </button>
-      <button class="tx-tab" [class.is-active]="abaAtiva === 'arquivados'" (click)="abaAtiva = 'arquivados'">
-        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <rect width="20" height="5" x="2" y="3" rx="1"></rect>
-          <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
-          <path d="M10 12h4"></path>
-        </svg>
-        Arquivados
-      </button>
-      <button class="tx-tab" [class.is-active]="abaAtiva === 'configuracoes'" (click)="abaAtiva = 'configuracoes'">
-        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-          <circle cx="12" cy="12" r="3"></circle>
-        </svg>
-        Configurações
-      </button>
-    </nav>
-
     <!-- MODAL A: Cadastro e Edição -->
     <div *ngIf="mostrarModalCadastro" class="tx-modal-backdrop">
       <div class="tx-modal-card">
@@ -1142,6 +1139,14 @@
       <div class="tx-toolbar">
         <p class="tx-toolbar-info">{{ clientes.length }} cliente(s) cadastrado(s) na base.</p>
         <div style="display:flex; align-items:center; gap:10px;">
+          <button class="tx-btn tx-btn-secondary" (click)="abaAtiva = 'arquivados'">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+              <path d="M10 12h4"></path>
+            </svg>
+            Arquivados
+          </button>
           <input type="file" id="tx-csv-input" accept=".csv,.xlsx" style="display:none" (change)="importarPlanilha($event)" [disabled]="importandoPlanilha">
           <label for="tx-csv-input" class="tx-btn tx-btn-secondary" [style.opacity]="importandoPlanilha ? 0.6 : 1" [style.pointer-events]="importandoPlanilha ? 'none' : 'auto'">
             <span *ngIf="importandoPlanilha" class="tx-spinner"></span>
@@ -1276,6 +1281,13 @@
 
     <!-- ============================ ABA 4: ARQUIVADOS ============================ -->
     <div *ngIf="abaAtiva === 'arquivados'">
+
+      <button class="tx-voltar-link" (click)="abaAtiva = 'clientes'">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m15 18-6-6 6-6"></path>
+        </svg>
+        Clientes em Geral
+      </button>
 
       <div class="tx-page-header">
         <h1 class="tx-page-title">Arquivados</h1>

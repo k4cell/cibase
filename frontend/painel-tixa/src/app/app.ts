@@ -97,6 +97,7 @@ export class AppComponent implements OnInit {
   // verde de receita nem o vermelho de risco, que têm significado próprio.
   // Guardado no localStorage do navegador (preferência de tela, não do negócio).
   mostrarSeletorCor: boolean = false;
+  mostrarMenuUsuario: boolean = false;
   corSelecionada: string = 'Azul';
 
   // "soft"/"textSoft" são o fundo/texto suaves no tema escuro; "softClaro" é o
@@ -324,6 +325,13 @@ export class AppComponent implements OnInit {
     this.authService.logout();
     this.estaLogado = false;
     this.loginSenha = '';
+  }
+
+  mudarUsuario() {
+    // Placeholder -- ainda não existe múltiplas contas no Tixa, isso entra
+    // quando fizermos essa parte de verdade.
+    this.mostrarMenuUsuario = false;
+    this.mostrarToast('Em breve.', '#ffc107');
   }
 
   // ==============================================================================
