@@ -1,4 +1,6 @@
-// Endereço do backend. Hoje aponta pro uvicorn rodando local; quando o
-// backend for publicado (ex: Render), essa é a única linha que precisa
-// mudar, em vez de editar cada chamada http espalhada pelo app.ts.
-export const API_BASE_URL = 'http://127.0.0.1:8000';
+import { environment } from '../environments/environment';
+
+// Endereço do backend. Em desenvolvimento (npm start) aponta pro uvicorn
+// local; em produção (ng build) aponta pro Render -- a troca é automática,
+// feita pelo Angular via fileReplacements (veja angular.json), não daqui.
+export const API_BASE_URL = environment.apiBaseUrl;
