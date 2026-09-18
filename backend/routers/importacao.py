@@ -3,11 +3,12 @@ import io
 import unicodedata
 
 import openpyxl
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
 
+from auth import verificar_token
 from database import conectar_banco
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verificar_token)])
 
 # Cada campo é reconhecido por QUALQUER cabeçalho que CONTENHA uma das palavras-chave
 # (não precisa bater a frase inteira) -- assim "Nome do Cliente", "Nome Completo" e "nome"

@@ -1,10 +1,11 @@
 import psycopg2
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from auth import verificar_token
 from database import conectar_banco
 from models import NovoServico
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verificar_token)])
 
 # ==============================================================================
 # CATÁLOGO DE SERVIÇOS (motor de recomendação: unidade = cliente + serviço)

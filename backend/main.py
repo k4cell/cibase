@@ -1,15 +1,17 @@
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from auth import verificar_token
 from routers import clientes, configuracoes, importacao, motor, servicos, vendas
 
 # ==============================================================================
 # CONFIGURAÇÕES INICIAIS DA API (MOTOR TIXA)
 # ==============================================================================
+# O token do Firebase agora é exigido em cada router individualmente (veja
+# routers/*.py: APIRouter(dependencies=[Depends(verificar_token)])), não mais
+# aqui no app inteiro -- assim dá pra ter uma rota pública, como o /healthz
+# abaixo, que serviços de monitoramento (Render) conseguem checar sem token.
 app = FastAPI(
     title="Motor Backend - Projeto Tixa",
-    version="0.13.0",
-    dependencies=[Depends(verificar_token)]  # exige token válido em toda rota
+    version="0.13.0"
 )
 
 app.add_middleware(
@@ -19,6 +21,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/healthz")
+def verificar_saude():
+    """ Rota pública (sem exigir token) só pra serviços de monitoramento
+    confirmarem que o processo está de pé -- não expõe nenhum dado. """
+    return {"status": "ok"}
 
 app.include_router(configuracoes.router)
 app.include_router(servicos.router)

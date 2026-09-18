@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from './auth.service';
+import { API_BASE_URL } from './api.config';
 
 @Component({
   selector: 'app-root',
@@ -373,7 +374,7 @@ export class AppComponent implements OnInit {
   // COMUNICAÇÃO COM O BACKEND
   // ==============================================================================
   carregarClientes() {
-    this.http.get<any>('http://127.0.0.1:8000/clientes').subscribe({
+    this.http.get<any>(`${API_BASE_URL}/clientes`).subscribe({
       next: (dados) => {
         this.clientes = dados.clientes;
         this.montarFilaDeHoje();
@@ -384,7 +385,7 @@ export class AppComponent implements OnInit {
   }
 
   carregarClientesArquivados() {
-    this.http.get<any>('http://127.0.0.1:8000/clientes/arquivados').subscribe({
+    this.http.get<any>(`${API_BASE_URL}/clientes/arquivados`).subscribe({
       next: (dados) => {
         this.clientesArquivados = dados.clientes;
         this.cdr.detectChanges();
@@ -448,7 +449,7 @@ export class AppComponent implements OnInit {
     this.salvandoCliente = true; 
 
     if (this.clienteEditandoId) {
-      this.http.put<any>(`http://127.0.0.1:8000/clientes/${this.clienteEditandoId}`, dadosDoFormulario).subscribe({
+      this.http.put<any>(`${API_BASE_URL}/clientes/${this.clienteEditandoId}`, dadosDoFormulario).subscribe({
         next: (resposta) => {
           this.salvandoCliente = false; 
           if (resposta.erro) {
@@ -465,7 +466,7 @@ export class AppComponent implements OnInit {
         }
       });
     } else {
-      this.http.post<any>('http://127.0.0.1:8000/clientes', dadosDoFormulario).subscribe({
+      this.http.post<any>(`${API_BASE_URL}/clientes`, dadosDoFormulario).subscribe({
         next: (resposta) => {
           this.salvandoCliente = false; 
           if (resposta.erro) {
@@ -500,7 +501,7 @@ export class AppComponent implements OnInit {
 
     this.importandoPlanilha = true;
 
-    this.http.post<any>('http://127.0.0.1:8000/importar-clientes', formData).subscribe({
+    this.http.post<any>(`${API_BASE_URL}/importar-clientes`, formData).subscribe({
       next: (resposta) => {
         this.importandoPlanilha = false;
         event.target.value = '';
@@ -556,7 +557,7 @@ export class AppComponent implements OnInit {
 
     this.importandoVendas = true;
 
-    this.http.post<any>('http://127.0.0.1:8000/importar-vendas', formData).subscribe({
+    this.http.post<any>(`${API_BASE_URL}/importar-vendas`, formData).subscribe({
       next: (resposta) => {
         this.importandoVendas = false;
         event.target.value = '';
@@ -605,7 +606,7 @@ export class AppComponent implements OnInit {
 
     this.arquivandoCliente = true;
 
-    this.http.delete<any>(`http://127.0.0.1:8000/clientes/${id}`).subscribe({
+    this.http.delete<any>(`${API_BASE_URL}/clientes/${id}`).subscribe({
       next: (resposta) => {
         this.arquivandoCliente = false;
         this.clienteParaArquivar = null;
@@ -627,7 +628,7 @@ export class AppComponent implements OnInit {
   }
 
   reativarCliente(cliente: any) {
-    this.http.put<any>(`http://127.0.0.1:8000/clientes/${cliente.id}/reativar`, {}).subscribe({
+    this.http.put<any>(`${API_BASE_URL}/clientes/${cliente.id}/reativar`, {}).subscribe({
       next: (resposta) => {
         if (resposta.erro) {
           this.mostrarToast('Atenção: ' + resposta.erro, '#ffc107');
@@ -655,7 +656,7 @@ export class AppComponent implements OnInit {
 
     this.excluindoPermanente = true;
 
-    this.http.delete<any>(`http://127.0.0.1:8000/clientes/${id}/permanente`).subscribe({
+    this.http.delete<any>(`${API_BASE_URL}/clientes/${id}/permanente`).subscribe({
       next: (resposta) => {
         this.excluindoPermanente = false;
         this.clienteParaExcluirPermanente = null;
@@ -682,7 +683,7 @@ export class AppComponent implements OnInit {
   // INTELIGÊNCIA COMERCIAL E DASHBOARD
   // ==============================================================================
   carregarEstatisticas() {
-    this.http.get<any>('http://127.0.0.1:8000/estatisticas').subscribe({
+    this.http.get<any>(`${API_BASE_URL}/estatisticas`).subscribe({
       next: (dados) => {
         this.totalRecuperado = dados.total_recuperado;
         this.clientesReativados = dados.clientes_reativados;
@@ -693,7 +694,7 @@ export class AppComponent implements OnInit {
   }
 
   carregarConfiguracoes() {
-    this.http.get<any>('http://127.0.0.1:8000/configuracoes').subscribe({
+    this.http.get<any>(`${API_BASE_URL}/configuracoes`).subscribe({
       next: (dados) => {
         if (!dados.erro) {
           this.configDiasAtencao = dados.dias_atencao;
@@ -707,7 +708,7 @@ export class AppComponent implements OnInit {
   }
 
   carregarRecuperadoNoMes() {
-    this.http.get<any>('http://127.0.0.1:8000/estatisticas/receita-mensal?unidade=mes&quantidade=1&passo=1').subscribe({
+    this.http.get<any>(`${API_BASE_URL}/estatisticas/receita-mensal?unidade=mes&quantidade=1&passo=1`).subscribe({
       next: (dados) => {
         const meses = dados.meses || [];
         this.recuperadoNoMesAtual = meses.length ? meses[meses.length - 1].valor : 0;
@@ -730,7 +731,7 @@ export class AppComponent implements OnInit {
     this.salvandoConfiguracoes = true;
     const dados = { dias_atencao: this.configDiasAtencao, dias_risco: this.configDiasRisco };
 
-    this.http.put<any>('http://127.0.0.1:8000/configuracoes', dados).subscribe({
+    this.http.put<any>(`${API_BASE_URL}/configuracoes`, dados).subscribe({
       next: (resposta) => {
         this.salvandoConfiguracoes = false;
         if (resposta.erro) {
@@ -747,7 +748,7 @@ export class AppComponent implements OnInit {
   }
 
   carregarServicos() {
-    this.http.get<any>('http://127.0.0.1:8000/servicos').subscribe({
+    this.http.get<any>(`${API_BASE_URL}/servicos`).subscribe({
       next: (dados) => {
         this.servicos = dados.servicos || [];
         this.cdr.detectChanges();
@@ -765,7 +766,7 @@ export class AppComponent implements OnInit {
     this.salvandoServico = true;
     const dados = { nome: this.novoServicoNome.trim(), dias_ciclo: this.novoServicoCiclo || null };
 
-    this.http.post<any>('http://127.0.0.1:8000/servicos', dados).subscribe({
+    this.http.post<any>(`${API_BASE_URL}/servicos`, dados).subscribe({
       next: (resposta) => {
         this.salvandoServico = false;
         if (resposta.erro) {
@@ -785,7 +786,7 @@ export class AppComponent implements OnInit {
   }
 
   excluirServico(servico: any) {
-    this.http.delete<any>(`http://127.0.0.1:8000/servicos/${servico.id}`).subscribe({
+    this.http.delete<any>(`${API_BASE_URL}/servicos/${servico.id}`).subscribe({
       next: (resposta) => {
         if (resposta.erro) {
           this.mostrarToast(resposta.erro, '#ffc107');
@@ -822,7 +823,7 @@ export class AppComponent implements OnInit {
 
   carregarReceitaMensal() {
     const { unidade, quantidade, passo } = this.periodoParams();
-    this.http.get<any>(`http://127.0.0.1:8000/estatisticas/receita-mensal?unidade=${unidade}&quantidade=${quantidade}&passo=${passo}`).subscribe({
+    this.http.get<any>(`${API_BASE_URL}/estatisticas/receita-mensal?unidade=${unidade}&quantidade=${quantidade}&passo=${passo}`).subscribe({
       next: (dados) => {
         this.receitaMensal = dados.meses || [];
         this.cdr.detectChanges();
@@ -833,7 +834,7 @@ export class AppComponent implements OnInit {
 
   carregarClientesPeriodo() {
     const { unidade, quantidade, passo } = this.periodoParams();
-    this.http.get<any>(`http://127.0.0.1:8000/estatisticas/clientes-periodo?unidade=${unidade}&quantidade=${quantidade}&passo=${passo}`).subscribe({
+    this.http.get<any>(`${API_BASE_URL}/estatisticas/clientes-periodo?unidade=${unidade}&quantidade=${quantidade}&passo=${passo}`).subscribe({
       next: (dados) => {
         this.clientesPeriodoTotal = dados.total_clientes_periodo || 0;
         this.topClientesPeriodo = dados.top_clientes || [];
@@ -965,7 +966,7 @@ export class AppComponent implements OnInit {
 
   private carregarFilaMotor() {
     const filtroServico = this.filtroServicoFilaId ? `&servico_id=${this.filtroServicoFilaId}` : '';
-    this.http.get<any>(`http://127.0.0.1:8000/motor/fila?tamanho=${this.LIMITE_FILA_HOJE}${filtroServico}`).subscribe({
+    this.http.get<any>(`${API_BASE_URL}/motor/fila?tamanho=${this.LIMITE_FILA_HOJE}${filtroServico}`).subscribe({
       next: (dados) => {
         if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
         this.filaHoje = (dados.fila || []).map((linha: any) => this.montarItemFila(linha));
@@ -1015,7 +1016,7 @@ export class AppComponent implements OnInit {
   }
 
   private carregarAdiadosMotor() {
-    this.http.get<any>('http://127.0.0.1:8000/motor/adiados').subscribe({
+    this.http.get<any>(`${API_BASE_URL}/motor/adiados`).subscribe({
       next: (dados) => {
         if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
         this.clientesAdiados = (dados.adiados || []).map((item: any) => ({
@@ -1038,7 +1039,7 @@ export class AppComponent implements OnInit {
   // "Trazer de volta agora" = desfazer o último contato registrado pra essa
   // linha (documento: "desfazer é obrigatório") -- some a trava de reentrada.
   trazerDeVoltaAgora(item: any) {
-    this.http.delete<any>(`http://127.0.0.1:8000/motor/contatos/${item.contatoId}`).subscribe({
+    this.http.delete<any>(`${API_BASE_URL}/motor/contatos/${item.contatoId}`).subscribe({
       next: (resposta) => {
         if (resposta.erro) { this.mostrarToast('Erro: ' + resposta.erro, '#dc3545'); return; }
         this.mostrarToast(`${item.clienteNome} volta a aparecer na fila.`, '#28a745');
@@ -1067,7 +1068,7 @@ export class AppComponent implements OnInit {
 
   private registrarContatoFila(item: any, resultado: string, mensagemToast: string) {
     const corpo = { cliente_id: item.cliente.id, servico_id: item.servicoId, resultado };
-    this.http.post<any>('http://127.0.0.1:8000/motor/contatos', corpo).subscribe({
+    this.http.post<any>(`${API_BASE_URL}/motor/contatos`, corpo).subscribe({
       next: (resposta) => {
         if (resposta.erro) { this.mostrarToast('Erro: ' + resposta.erro, '#dc3545'); return; }
 
@@ -1100,7 +1101,7 @@ export class AppComponent implements OnInit {
     this.fecharModalVenda();
     this.cdr.detectChanges(); 
 
-    this.http.post<any>('http://127.0.0.1:8000/vendas', dadosVenda).subscribe({
+    this.http.post<any>(`${API_BASE_URL}/vendas`, dadosVenda).subscribe({
       next: (resposta) => {
         if (resposta.erro) {
           this.mostrarToast('Erro: ' + resposta.erro, '#dc3545');
@@ -1188,7 +1189,7 @@ export class AppComponent implements OnInit {
     this.vendasClienteDetalhe = [];
     this.carregandoVendasDetalhe = true;
 
-    this.http.get<any>(`http://127.0.0.1:8000/clientes/${cliente.id}/vendas`).subscribe({
+    this.http.get<any>(`${API_BASE_URL}/clientes/${cliente.id}/vendas`).subscribe({
       next: (dados) => {
         this.carregandoVendasDetalhe = false;
         this.vendasClienteDetalhe = dados.vendas || [];

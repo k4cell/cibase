@@ -1,11 +1,12 @@
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from auth import verificar_token
 from database import conectar_banco
 from models import NovoCliente, AdiarContato, AlternarFlag
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verificar_token)])
 
 # ==============================================================================
 # ROTAS DE CLIENTES

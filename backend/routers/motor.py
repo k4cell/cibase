@@ -1,13 +1,14 @@
 from datetime import date
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from auth import verificar_token
 from database import conectar_banco
 from models import NovoContato
 from motor_classificacao import aplicar_travas, classificar_todos, montar_fila
 from motor_reentrada import registrar_contato
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verificar_token)])
 
 # ==============================================================================
 # MOTOR DE RECOMENDAÇÃO -- rotas de diagnóstico das Fases 1, 2 e 3

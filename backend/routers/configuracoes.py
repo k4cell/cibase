@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from auth import verificar_token
 from database import conectar_banco
 from models import ConfiguracoesAtualizacao
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verificar_token)])
 
 # ==============================================================================
 # CONFIGURAÇÕES DO NEGÓCIO (régua de relacionamento / farol de risco)
