@@ -226,6 +226,12 @@
         </svg>
         Clientes em Geral
       </button>
+      <button class="tx-tab" [class.is-active]="abaAtiva === 'servicos'" (click)="abaAtiva = 'servicos'">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+        </svg>
+        Serviços
+      </button>
     </nav>
 
     <div class="tx-navbar-right">
@@ -629,6 +635,17 @@
           <h3 class="tx-home-card-title">Clientes em Geral</h3>
           <p class="tx-home-card-desc">Cadastro completo, importação de planilhas e histórico de compras.</p>
           <span class="tx-home-card-stat">{{ clientes.length }} cadastrados</span>
+        </button>
+
+        <button class="tx-home-card" (click)="abaAtiva = 'servicos'">
+          <div class="tx-home-card-icon">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+          </div>
+          <h3 class="tx-home-card-title">Serviços</h3>
+          <p class="tx-home-card-desc">O catálogo do que a empresa vende, cada serviço com seu ciclo de recompra.</p>
+          <span class="tx-home-card-stat">{{ servicos.length === 1 ? '1 serviço cadastrado' : servicos.length + ' serviços cadastrados' }}</span>
         </button>
 
         <button class="tx-home-card" (click)="abaAtiva = 'arquivados'">
@@ -1439,17 +1456,22 @@
         </div>
       </div>
 
-      <div class="tx-panel" style="max-width: 560px; margin-top: 24px;">
-        <div class="tx-panel-head">
-          <div>
-            <h2 class="tx-panel-title">Catálogo de Serviços</h2>
-            <p class="tx-panel-caption">
-              Cada serviço tem seu próprio ciclo de recompra esperado — o mesmo cliente pode
-              estar atrasado na revisão e em dia na manutenção ao mesmo tempo.
-            </p>
-          </div>
-        </div>
+    </div>
+    <!-- ========================== FIM DA ABA 5 ========================== -->
 
+
+    <!-- ============================ ABA: SERVIÇOS ============================ -->
+    <div *ngIf="abaAtiva === 'servicos'">
+
+      <div class="tx-page-header">
+        <h1 class="tx-page-title">Serviços</h1>
+        <p class="tx-page-subtitle">
+          Cada serviço tem seu próprio ciclo de recompra esperado — o mesmo cliente pode
+          estar atrasado na revisão e em dia na manutenção ao mesmo tempo.
+        </p>
+      </div>
+
+      <div class="tx-panel" style="max-width: 560px;">
         <div class="tx-servico-lista" *ngIf="servicos.length > 0">
           <div class="tx-servico-item" *ngFor="let servico of servicos">
             <div>
@@ -1489,7 +1511,7 @@
       </div>
 
     </div>
-    <!-- ========================== FIM DA ABA 5 ========================== -->
+    <!-- ========================== FIM DA ABA SERVIÇOS ========================== -->
 
   </div>
 </div>
