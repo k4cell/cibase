@@ -56,6 +56,7 @@ export class AppComponent implements OnInit {
   loginEmail: string = '';
   loginSenha: string = '';
   carregandoLogin: boolean = false;
+  mostrarSenhaLogin: boolean = false;
 
   // Importação de clientes via planilha (CSV ou Excel)
   importandoPlanilha: boolean = false;
@@ -86,6 +87,8 @@ export class AppComponent implements OnInit {
   servicoEditandoNome: string = '';
   servicoEditandoCiclo: number | null = null;
   salvandoEdicaoServico: boolean = false;
+  servicoParaExcluir: any = null;
+  excluindoServico: boolean = false;
 
   // Fila "Oportunidades de hoje" -- consome o motor de recomendação
   // (GET /motor/fila no backend: classificação por cliente+serviço, travas
@@ -93,10 +96,17 @@ export class AppComponent implements OnInit {
   // mostra mais do que LIMITE_FILA_HOJE por dia.
   readonly LIMITE_FILA_HOJE = 10;
   filaHoje: any[] = [];
+  itemParaExcluirDaFila: any = null;
   clientesAdiados: any[] = [];
   mostrarAdiados: boolean = false;
   recuperadoNoMesAtual: number = 0;
-  filtroServicoFilaId: string = '';
+  subAbaHoje: string = 'fila';
+  servicoPorServicoId: string = 'todos';
+  clientesPorServico: any[] = [];
+  clientesPorServicoCarregados: boolean = false;
+  filtroStatusPorServico: string = 'Todos';
+  contatados: any[] = [];
+  contatadosCarregados: boolean = false;
 
   // Cor de destaque (botões, aba ativa, links) -- só a marca/ação, nunca o
   // verde de receita nem o vermelho de risco, que têm significado próprio.
@@ -127,7 +137,7 @@ export class AppComponent implements OnInit {
     escuro: {
       bg: '#0f172a', surface: '#1e293b', surfaceAlt: '#263449', border: '#334155', borderStrong: '#475569',
       title: '#f1f5f9', body: '#cbd5e1', label: '#94a3b8', faint: '#64748b',
-      emeraldSoft: '#064e3b', amberSoft: '#451a03', redSoft: '#450a0a',
+      emeraldSoft: '#064e3b', amberSoft: '#451a03', orangeSoft: '#431407', redSoft: '#450a0a',
       navbarBg: 'rgba(15, 23, 42, 0.85)',
       shadowXs: '0 1px 2px 0 rgb(0 0 0 / 0.3)',
       shadowSm: '0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4)',
@@ -135,6 +145,7 @@ export class AppComponent implements OnInit {
       shadowLg: '0 24px 48px -16px rgb(0 0 0 / 0.65), 0 8px 16px -8px rgb(0 0 0 / 0.5)',
       dangerInk: '#f87171', dangerInkForte: '#fca5a5',
       warningInk: '#fbbf24', warningInkForte: '#fcd34d',
+      orangeInk: '#fdba74',
       successInk: '#34d399', successInkForte: '#6ee7b7',
       oportunidade: {
         novoLead:         { fundo: '#0c3a5f', texto: '#93c5fd' },
@@ -148,7 +159,7 @@ export class AppComponent implements OnInit {
     claro: {
       bg: '#f8fafc', surface: '#ffffff', surfaceAlt: '#f1f5f9', border: '#e2e8f0', borderStrong: '#cbd5e1',
       title: '#0f172a', body: '#334155', label: '#64748b', faint: '#94a3b8',
-      emeraldSoft: '#d1fae5', amberSoft: '#fef3c7', redSoft: '#fee2e2',
+      emeraldSoft: '#d1fae5', amberSoft: '#fef3c7', orangeSoft: '#ffedd5', redSoft: '#fee2e2',
       navbarBg: 'rgba(255, 255, 255, 0.85)',
       shadowXs: '0 1px 2px 0 rgb(15 23 42 / 0.06)',
       shadowSm: '0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.08)',
@@ -156,6 +167,7 @@ export class AppComponent implements OnInit {
       shadowLg: '0 20px 40px -16px rgb(15 23 42 / 0.16), 0 8px 16px -8px rgb(15 23 42 / 0.08)',
       dangerInk: '#dc2626', dangerInkForte: '#b91c1c',
       warningInk: '#b45309', warningInkForte: '#92400e',
+      orangeInk: '#c2410c',
       successInk: '#059669', successInkForte: '#047857',
       oportunidade: {
         novoLead:         { fundo: '#eff6ff', texto: '#1d4ed8' },
@@ -227,6 +239,7 @@ export class AppComponent implements OnInit {
     estilo.setProperty('--tx-faint', t.faint);
     estilo.setProperty('--tx-emerald-soft', t.emeraldSoft);
     estilo.setProperty('--tx-amber-soft', t.amberSoft);
+    estilo.setProperty('--tx-orange-soft', t.orangeSoft);
     estilo.setProperty('--tx-red-soft', t.redSoft);
     estilo.setProperty('--tx-navbar-bg', t.navbarBg);
     estilo.setProperty('--tx-shadow-xs', t.shadowXs);
@@ -237,6 +250,7 @@ export class AppComponent implements OnInit {
     estilo.setProperty('--tx-danger-ink-forte', t.dangerInkForte);
     estilo.setProperty('--tx-warning-ink', t.warningInk);
     estilo.setProperty('--tx-warning-ink-forte', t.warningInkForte);
+    estilo.setProperty('--tx-orange-ink', t.orangeInk);
     estilo.setProperty('--tx-success-ink', t.successInk);
     estilo.setProperty('--tx-success-ink-forte', t.successInkForte);
 
@@ -336,6 +350,17 @@ export class AppComponent implements OnInit {
     // Placeholder -- ainda não existe múltiplas contas no Tixa, isso entra
     // quando fizermos essa parte de verdade.
     this.mostrarMenuUsuario = false;
+    this.mostrarToast('Em breve.', '#ffc107');
+  }
+
+  esqueciSenha() {
+    // Placeholder -- fluxo de redefinição de senha do Firebase ainda não
+    // está ligado na tela.
+    this.mostrarToast('Em breve.', '#ffc107');
+  }
+
+  criarConta() {
+    // Placeholder -- cadastro de conta ainda não está ligado na tela.
     this.mostrarToast('Em breve.', '#ffc107');
   }
 
@@ -766,9 +791,13 @@ export class AppComponent implements OnInit {
       this.mostrarToast('Dê um nome ao serviço.', '#ffc107');
       return;
     }
+    if (!this.novoServicoCiclo || this.novoServicoCiclo <= 0) {
+      this.mostrarToast('Informe o ciclo esperado em dias.', '#ffc107');
+      return;
+    }
 
     this.salvandoServico = true;
-    const dados = { nome: this.novoServicoNome.trim(), dias_ciclo: this.novoServicoCiclo || null };
+    const dados = { nome: this.novoServicoNome.trim(), dias_ciclo: this.novoServicoCiclo };
 
     this.http.post<any>(`${API_BASE_URL}/servicos`, dados).subscribe({
       next: (resposta) => {
@@ -804,8 +833,8 @@ export class AppComponent implements OnInit {
       this.mostrarToast('Dê um nome ao serviço.', '#ffc107');
       return;
     }
-    if (this.servicoEditandoCiclo !== null && this.servicoEditandoCiclo <= 0) {
-      this.mostrarToast('O ciclo esperado precisa ser maior que zero.', '#ffc107');
+    if (!this.servicoEditandoCiclo || this.servicoEditandoCiclo <= 0) {
+      this.mostrarToast('Informe o ciclo esperado em dias.', '#ffc107');
       return;
     }
 
@@ -831,9 +860,25 @@ export class AppComponent implements OnInit {
     });
   }
 
-  excluirServico(servico: any) {
-    this.http.delete<any>(`${API_BASE_URL}/servicos/${servico.id}`).subscribe({
+  abrirConfirmacaoExcluirServico(servico: any) {
+    this.servicoParaExcluir = servico;
+  }
+
+  fecharConfirmacaoExcluirServico() {
+    this.servicoParaExcluir = null;
+  }
+
+  confirmarExclusaoServico() {
+    if (!this.servicoParaExcluir) return;
+    const id = this.servicoParaExcluir.id;
+
+    this.excluindoServico = true;
+
+    this.http.delete<any>(`${API_BASE_URL}/servicos/${id}`).subscribe({
       next: (resposta) => {
+        this.excluindoServico = false;
+        this.servicoParaExcluir = null;
+
         if (resposta.erro) {
           this.mostrarToast(resposta.erro, '#ffc107');
         } else {
@@ -841,7 +886,11 @@ export class AppComponent implements OnInit {
           this.carregarServicos();
         }
       },
-      error: (erro) => this.mostrarToast('Falha ao excluir o serviço.', '#dc3545')
+      error: (erro) => {
+        this.excluindoServico = false;
+        this.servicoParaExcluir = null;
+        this.mostrarToast('Falha ao excluir o serviço.', '#dc3545');
+      }
     });
   }
 
@@ -982,6 +1031,13 @@ export class AppComponent implements OnInit {
     return 'transparent';
   }
 
+  // Formata valores em dinheiro no padrão brasileiro (separador de milhar
+  // com ponto, decimal com vírgula) -- .toFixed(2) sozinho não faz isso,
+  // então "418410.00" aparecia sem separador nenhum, difícil de ler rápido.
+  formatarValor(valor: number): string {
+    return (valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   exibirTextoDias(dataUltimaCompra: string): string {
     if (!dataUltimaCompra || dataUltimaCompra === 'Sem vendas') return 'Sem vendas';
 
@@ -1006,13 +1062,49 @@ export class AppComponent implements OnInit {
     this.carregarAdiadosMotor();
   }
 
-  filtrarFilaPorServico() {
-    this.carregarFilaMotor();
+  trocarSubAbaHoje(aba: string) {
+    this.subAbaHoje = aba;
+    if (aba === 'contatados' && !this.contatadosCarregados) {
+      this.carregarContatados();
+    }
+    if (aba === 'servico' && !this.clientesPorServicoCarregados) {
+      this.filtrarClientesPorServico();
+    }
+  }
+
+  filtrarClientesPorServico() {
+    this.filtroStatusPorServico = 'Todos';
+    this.clientesPorServicoCarregados = true;
+    const filtroServico = this.servicoPorServicoId === 'todos' ? '' : `&servico_id=${this.servicoPorServicoId}`;
+    this.http.get<any>(`${API_BASE_URL}/motor/fila?tamanho=9999${filtroServico}`).subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
+        this.clientesPorServico = (dados.fila || []).map((linha: any) => this.montarItemFila(linha));
+        this.cdr.detectChanges();
+      },
+      error: () => this.mostrarToast('Falha ao carregar os clientes desse serviço.', '#dc3545')
+    });
+  }
+
+  clientesPorServicoFiltrados() {
+    if (this.filtroStatusPorServico === 'Todos') return this.clientesPorServico;
+    return this.clientesPorServico.filter(item => item.status === this.filtroStatusPorServico);
+  }
+
+  carregarContatados() {
+    this.http.get<any>(`${API_BASE_URL}/motor/contatados`).subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
+        this.contatados = dados.contatados || [];
+        this.contatadosCarregados = true;
+        this.cdr.detectChanges();
+      },
+      error: () => this.mostrarToast('Falha ao carregar os contatados.', '#dc3545')
+    });
   }
 
   private carregarFilaMotor() {
-    const filtroServico = this.filtroServicoFilaId ? `&servico_id=${this.filtroServicoFilaId}` : '';
-    this.http.get<any>(`${API_BASE_URL}/motor/fila?tamanho=${this.LIMITE_FILA_HOJE}${filtroServico}`).subscribe({
+    this.http.get<any>(`${API_BASE_URL}/motor/fila?tamanho=${this.LIMITE_FILA_HOJE}`).subscribe({
       next: (dados) => {
         if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
         this.filaHoje = (dados.fila || []).map((linha: any) => this.montarItemFila(linha));
@@ -1041,6 +1133,20 @@ export class AppComponent implements OnInit {
     };
   }
 
+  // Classe de cor do badge de status do motor -- por gravidade (razão do
+  // ciclo): Recompra próxima é a mais leve, Frio a mais grave. Não usa a cor
+  // de destaque (que o usuário escolhe livremente), porque status é um
+  // significado fixo, igual já vale pro verde/vermelho do farol de risco.
+  classeStatus(status: string): string {
+    const mapa: { [key: string]: string } = {
+      'Recompra próxima': 'tx-status--recompra',
+      'Atrasado': 'tx-status--atrasado',
+      'Adormecido': 'tx-status--adormecido',
+      'Frio': 'tx-status--frio'
+    };
+    return mapa[status] || '';
+  }
+
   private motivoFila(linha: any): string {
     const base = `Está há ${linha.dias_sem_comprar} dias sem comprar (ciclo esperado: ${linha.ciclo_esperado} dias).`;
     return linha.baixa_confianca ? `${base} Estimativa com poucos dados ainda.` : base;
@@ -1067,13 +1173,34 @@ export class AppComponent implements OnInit {
         if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
         this.clientesAdiados = (dados.adiados || []).map((item: any) => ({
           contatoId: item.contato_id,
+          clienteId: item.cliente_id,
           clienteNome: item.cliente_nome,
+          servicoId: item.servico_id,
           servicoNome: item.servico_nome,
           textoRetorno: this.textoRetorno(item.dias_restantes)
         }));
         this.cdr.detectChanges();
       },
       error: () => this.mostrarToast('Falha ao carregar os adiados.', '#dc3545')
+    });
+  }
+
+  // Contatar direto quem está adiado, sem precisar trazer de volta pra fila
+  // antes -- assume silêncio igual ao Enviar da fila (mesma regra do
+  // documento) e recalcula a data de reentrada a partir de agora.
+  contatarAdiado(item: any) {
+    const cliente = this.clientes.find(c => c.id === item.clienteId);
+    const mensagem = `Oi, ${item.clienteNome}! Tudo bem? Passando pra saber se podemos te ajudar com alguma coisa.`;
+    window.open(this.linkWhatsApp(cliente?.telefone || '', mensagem), '_blank');
+
+    const corpo = { cliente_id: item.clienteId, servico_id: item.servicoId, resultado: 'silencio' };
+    this.http.post<any>(`${API_BASE_URL}/motor/contatos`, corpo).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) { this.mostrarToast('Erro: ' + resposta.erro, '#dc3545'); return; }
+        this.mostrarToast(`Mensagem aberta pra ${item.clienteNome}.`, '#28a745');
+        this.carregarAdiadosMotor();
+      },
+      error: () => this.mostrarToast('Falha ao registrar o contato.', '#dc3545')
     });
   }
 
@@ -1108,8 +1235,23 @@ export class AppComponent implements OnInit {
     this.registrarContatoFila(item, 'adiar_sem_data', `${item.cliente.nome} volta à fila mais pra frente.`);
   }
 
-  recusarContatoFila(item: any) {
-    this.registrarContatoFila(item, 'recusou', `${item.cliente.nome} não vai aparecer na fila por um bom tempo.`);
+  // "X" do card: só tira o cliente da fila de HOJE (local, sem registrar
+  // contato nenhum no motor) -- diferente do Adiar, não afeta a reentrada.
+  // Volta a aparecer normalmente na próxima vez que a fila for recalculada.
+  abrirConfirmacaoExcluirDaFila(item: any) {
+    this.itemParaExcluirDaFila = item;
+  }
+
+  fecharConfirmacaoExcluirDaFila() {
+    this.itemParaExcluirDaFila = null;
+  }
+
+  confirmarExclusaoDaFila() {
+    if (!this.itemParaExcluirDaFila) return;
+    const item = this.itemParaExcluirDaFila;
+    this.filaHoje = this.filaHoje.filter(f => !(f.cliente.id === item.cliente.id && f.servicoId === item.servicoId));
+    this.itemParaExcluirDaFila = null;
+    this.mostrarToast(`${item.cliente.nome} foi tirado da fila de hoje.`, '#28a745');
   }
 
   private registrarContatoFila(item: any, resultado: string, mensagemToast: string) {

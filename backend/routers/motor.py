@@ -121,6 +121,44 @@ def obter_adiados():
     except Exception as erro:
         return {"erro": f"Erro ao buscar adiados: {erro}"}
 
+@router.get("/motor/contatados")
+def obter_contatados():
+    """ Registro de quem já recebeu um clique em "Enviar" (resultado=
+    'silencio' na tabela de contatos) -- mais recente primeiro. Alimenta a
+    sub-aba "Contatados" da página Hoje. Ainda não diferencia quem respondeu
+    ou não -- isso fica pra uma fase futura. """
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+        hoje = date.today()
+
+        cursor.execute("""
+            SELECT c.cliente_id, c.servico_id, c.data_contato, cl.nome, s.nome
+            FROM contatos c
+            JOIN clientes cl ON cl.id = c.cliente_id
+            JOIN servicos s ON s.id = c.servico_id
+            WHERE c.resultado = 'silencio'
+            ORDER BY c.data_contato DESC, c.id DESC;
+        """)
+
+        contatados = [
+            {
+                "cliente_id": cliente_id,
+                "cliente_nome": cliente_nome,
+                "servico_id": servico_id,
+                "servico_nome": servico_nome,
+                "data_contato": data_contato.isoformat(),
+                "dias_atras": (hoje - data_contato).days,
+            }
+            for cliente_id, servico_id, data_contato, cliente_nome, servico_nome in cursor.fetchall()
+        ]
+
+        cursor.close()
+        conexao.close()
+        return {"contatados": contatados}
+    except Exception as erro:
+        return {"erro": f"Erro ao buscar contatados: {erro}"}
+
 @router.post("/motor/contatos")
 def criar_contato(dados: NovoContato):
     """ Fase 4 / Etapa 5: registra o resultado de um contato (silêncio, pediu

@@ -1,1 +1,17 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* Reset básico -- sem isso, o navegador aplica uma margem padrão no <body>
+   (geralmente ~8px), que deixava a cor de fundo real da página (branca)
+   escapando como uma borda fina em volta de tudo. */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0f172a;
+}

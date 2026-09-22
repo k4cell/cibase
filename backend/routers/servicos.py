@@ -28,7 +28,7 @@ def criar_servico(servico: NovoServico):
     nome = servico.nome.strip()
     if not nome:
         return {"erro": "O nome do serviço não pode ficar em branco."}
-    if servico.dias_ciclo is not None and servico.dias_ciclo <= 0:
+    if servico.dias_ciclo <= 0:
         return {"erro": "O ciclo esperado precisa ser maior que zero."}
 
     try:
@@ -53,7 +53,7 @@ def atualizar_servico(servico_id: int, servico: NovoServico):
     nome = servico.nome.strip()
     if not nome:
         return {"erro": "O nome do serviço não pode ficar em branco."}
-    if servico.dias_ciclo is not None and servico.dias_ciclo <= 0:
+    if servico.dias_ciclo <= 0:
         return {"erro": "O ciclo esperado precisa ser maior que zero."}
 
     try:

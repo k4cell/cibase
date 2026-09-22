@@ -18,9 +18,10 @@ class NovaVenda(BaseModel):
 class NovoServico(BaseModel):
     """ Catálogo de serviços da empresa -- dias_ciclo é o nível 1 do fallback
     de ciclo esperado do motor de recomendação (a regra que a própria empresa
-    configura pra aquele serviço, antes de cair pro ciclo do cliente/base). """
+    configura pra aquele serviço, antes de cair pro ciclo do cliente/base).
+    Obrigatório: todo serviço precisa de um ciclo esperado definido. """
     nome: str
-    dias_ciclo: int | None = None
+    dias_ciclo: int
 
 
 class ConfiguracoesAtualizacao(BaseModel):
