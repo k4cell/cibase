@@ -42,6 +42,13 @@ export class AppComponent implements OnInit {
   salvandoCliente: boolean = false;
   filtroAtual: string = 'Todos';
 
+  // Classificação do motor (Fase 1+2) agrupada por cliente -- alimenta o
+  // badge "Perfil Comercial" do Painel de Recuperação. Só entram aqui
+  // linhas que já passaram pelas travas de contato (GET /motor/classificacao);
+  // por ora aceitamos que um cliente marcado "não contatar" apareça como "Em
+  // dia" mesmo se estiver atrasado -- resolver isso é trabalho futuro.
+  classificacaoPorCliente: { [clienteId: number]: any[] } = {};
+
   toastMensagem: string = '';
   toastCor: string = '';
   toastVisivel: boolean = false;
@@ -315,6 +322,7 @@ export class AppComponent implements OnInit {
       this.carregarClientes();
       this.carregarClientesArquivados();
       this.carregarServicos();
+      this.carregarClassificacaoMotor();
     } catch (erro: any) {
       this.carregandoLogin = false;
       this.mostrarToast(this.mensagemErroLogin(erro?.code), '#dc3545');
@@ -1022,15 +1030,6 @@ export class AppComponent implements OnInit {
     return 'risco';
   }
 
-  calcularRiscoCor(dataUltimaCompra: string): string {
-    const chave = this.classificarRisco(dataUltimaCompra);
-    const t = this.TEMAS[this.temaAtual];
-    if (chave === 'saudavel') return t.emeraldSoft;
-    if (chave === 'atencao') return t.amberSoft;
-    if (chave === 'risco') return t.redSoft;
-    return 'transparent';
-  }
-
   // Formata valores em dinheiro no padrão brasileiro (separador de milhar
   // com ponto, decimal com vírgula) -- .toFixed(2) sozinho não faz isso,
   // então "418410.00" aparecia sem separador nenhum, difícil de ler rápido.
@@ -1202,6 +1201,40 @@ export class AppComponent implements OnInit {
       },
       error: () => this.mostrarToast('Falha ao registrar o contato.', '#dc3545')
     });
+  }
+
+  // Classificação "crua" do motor (todo cliente com pelo menos um serviço
+  // fora do Ativo, já sem quem está travado por contato), agrupada por
+  // cliente pra alimentar o badge do Painel de Recuperação.
+  private carregarClassificacaoMotor() {
+    this.http.get<any>(`${API_BASE_URL}/motor/classificacao`).subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.mostrarToast('Erro: ' + dados.erro, '#dc3545'); return; }
+        const mapa: { [clienteId: number]: any[] } = {};
+        for (const linha of (dados.linhas || [])) {
+          if (!mapa[linha.cliente_id]) mapa[linha.cliente_id] = [];
+          mapa[linha.cliente_id].push(linha);
+        }
+        this.classificacaoPorCliente = mapa;
+        this.cdr.detectChanges();
+      },
+      error: () => this.mostrarToast('Falha ao carregar a classificação do motor.', '#dc3545')
+    });
+  }
+
+  // Perfil do cliente pro Painel de Recuperação: o serviço mais urgente dele
+  // (se tiver algum fora do Ativo) + quantos outros também estão em atraso.
+  // null = nenhum serviço fora do Ativo, ou seja, "Em dia".
+  perfilMotorCliente(clienteId: number): { servicoNome: string, status: string, extras: number } | null {
+    const linhas = this.classificacaoPorCliente[clienteId];
+    if (!linhas || linhas.length === 0) return null;
+
+    const ordemGravidade = ['Frio', 'Adormecido', 'Atrasado', 'Recompra próxima'];
+    const principal = [...linhas].sort(
+      (a, b) => ordemGravidade.indexOf(a.status) - ordemGravidade.indexOf(b.status)
+    )[0];
+
+    return { servicoNome: principal.servico_nome, status: principal.status, extras: linhas.length - 1 };
   }
 
   private textoRetorno(dias: number): string {

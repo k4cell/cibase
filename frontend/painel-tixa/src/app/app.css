@@ -1430,6 +1430,10 @@
 .tx-status--atrasado   { background: var(--tx-amber-soft); color: var(--tx-warning-ink); border-color: transparent; }
 .tx-status--adormecido { background: var(--tx-orange-soft); color: var(--tx-orange-ink); border-color: transparent; }
 .tx-status--frio       { background: var(--tx-red-soft); color: var(--tx-danger-ink); border-color: transparent; }
+.tx-status--em-dia     { background: var(--tx-emerald-soft); color: var(--tx-emerald); border-color: transparent; }
+
+.tx-perfil-motor-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tx-badge-extra { font-size: 11px; color: var(--tx-label); white-space: nowrap; }
 
 /* Fila "Oportunidades de hoje" */
 .tx-fila-lista {
@@ -1573,20 +1577,6 @@
 .tx-whatsapp-btn .tx-icon { width: 13px; height: 13px; }
 .tx-whatsapp-btn:hover { background: var(--tx-whatsapp); color: #fff; border-color: var(--tx-whatsapp); }
 .tx-whatsapp-btn:active { transform: scale(0.96); }
-
-.tx-risk-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 172px;
-  padding: 5px 12px;
-  border-radius: var(--tx-r-full);
-  border: 1px solid rgb(255 255 255 / 0.08);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--tx-title);
-  font-variant-numeric: tabular-nums;
-}
 
 .tx-revenue-cell {
   font-weight: 700;

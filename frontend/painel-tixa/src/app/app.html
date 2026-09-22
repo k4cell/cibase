@@ -217,7 +217,7 @@
           <path d="m9 11 3 3L22 4"></path>
           <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
         </svg>
-        Hoje
+        Atividades
       </button>
       <button class="tx-tab" [class.is-active]="abaAtiva === 'recuperacao'" (click)="abaAtiva = 'recuperacao'">
         <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -1086,7 +1086,6 @@
               <th>Cliente</th>
               <th>Perfil Comercial</th>
               <th>Contato / WhatsApp</th>
-              <th style="text-align: center;">Última Compra</th>
               <th style="text-align: center;">Compras</th>
               <th>Receita</th>
               <th style="text-align: center;">Ações</th>
@@ -1105,9 +1104,13 @@
               </td>
 
               <td>
-                <span class="tx-badge" [ngStyle]="{'background-color': classificarOportunidade(cliente).corFundo, 'color': classificarOportunidade(cliente).corTexto}">
-                  {{ classificarOportunidade(cliente).texto }}
-                </span>
+                <div class="tx-perfil-motor-cell" *ngIf="perfilMotorCliente(cliente.id) as perfil; else tudoEmDiaBadge">
+                  <span class="tx-badge" [ngClass]="classeStatus(perfil.status)">{{ perfil.servicoNome }} · {{ perfil.status }}</span>
+                  <span class="tx-badge-extra" *ngIf="perfil.extras > 0">+{{ perfil.extras }} serviço{{ perfil.extras > 1 ? 's' : '' }}</span>
+                </div>
+                <ng-template #tudoEmDiaBadge>
+                  <span class="tx-badge tx-status--em-dia">Em dia</span>
+                </ng-template>
               </td>
 
               <td (click)="$event.stopPropagation()">
@@ -1122,12 +1125,6 @@
                     Whats
                   </button>
                 </div>
-              </td>
-
-              <td style="text-align: center;">
-                <span class="tx-risk-chip" [ngStyle]="{'background-color': calcularRiscoCor(cliente.ultima_compra)}">
-                  {{ exibirTextoDias(cliente.ultima_compra) }}
-                </span>
               </td>
 
               <td style="text-align: center;">{{ cliente.total_compras }}</td>
