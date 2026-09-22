@@ -82,6 +82,10 @@ export class AppComponent implements OnInit {
   novoServicoNome: string = '';
   novoServicoCiclo: number | null = null;
   salvandoServico: boolean = false;
+  servicoEditandoId: number | null = null;
+  servicoEditandoNome: string = '';
+  servicoEditandoCiclo: number | null = null;
+  salvandoEdicaoServico: boolean = false;
 
   // Fila "Oportunidades de hoje" -- consome o motor de recomendação
   // (GET /motor/fila no backend: classificação por cliente+serviço, travas
@@ -781,6 +785,48 @@ export class AppComponent implements OnInit {
       error: (erro) => {
         this.salvandoServico = false;
         this.mostrarToast('Falha ao cadastrar o serviço.', '#dc3545');
+      }
+    });
+  }
+
+  iniciarEdicaoServico(servico: any) {
+    this.servicoEditandoId = servico.id;
+    this.servicoEditandoNome = servico.nome;
+    this.servicoEditandoCiclo = servico.dias_ciclo ?? null;
+  }
+
+  cancelarEdicaoServico() {
+    this.servicoEditandoId = null;
+  }
+
+  salvarEdicaoServico() {
+    if (!this.servicoEditandoNome.trim()) {
+      this.mostrarToast('Dê um nome ao serviço.', '#ffc107');
+      return;
+    }
+    if (this.servicoEditandoCiclo !== null && this.servicoEditandoCiclo <= 0) {
+      this.mostrarToast('O ciclo esperado precisa ser maior que zero.', '#ffc107');
+      return;
+    }
+
+    this.salvandoEdicaoServico = true;
+    const dados = { nome: this.servicoEditandoNome.trim(), dias_ciclo: this.servicoEditandoCiclo };
+
+    this.http.put<any>(`${API_BASE_URL}/servicos/${this.servicoEditandoId}`, dados).subscribe({
+      next: (resposta) => {
+        this.salvandoEdicaoServico = false;
+        if (resposta.erro) {
+          this.mostrarToast(resposta.erro, '#ffc107');
+          return;
+        }
+        this.mostrarToast('Serviço atualizado!', '#28a745');
+        this.servicoEditandoId = null;
+        this.carregarServicos();
+        this.montarFilaDeHoje(); // mudar o ciclo ou o nome reflete na fila de hoje
+      },
+      error: (erro) => {
+        this.salvandoEdicaoServico = false;
+        this.mostrarToast('Falha ao atualizar o serviço.', '#dc3545');
       }
     });
   }

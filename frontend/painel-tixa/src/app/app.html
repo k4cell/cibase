@@ -1472,26 +1472,13 @@
       </div>
 
       <div class="tx-panel" style="max-width: 560px;">
-        <div class="tx-servico-lista" *ngIf="servicos.length > 0">
-          <div class="tx-servico-item" *ngFor="let servico of servicos">
-            <div>
-              <div class="tx-servico-item-nome">{{ servico.nome }}</div>
-              <div class="tx-servico-item-ciclo">
-                {{ servico.dias_ciclo ? servico.dias_ciclo + ' dias de ciclo esperado' : 'Ciclo ainda não definido' }}
-              </div>
-            </div>
-            <button class="tx-servico-item-excluir" (click)="excluirServico(servico)" title="Excluir serviço">
-              <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <rect width="20" height="5" x="2" y="3" rx="1"></rect>
-                <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
-                <path d="M10 12h4"></path>
-              </svg>
-            </button>
+        <div class="tx-panel-head">
+          <div>
+            <h2 class="tx-panel-title">Adicionar serviço</h2>
           </div>
         </div>
-        <p class="tx-panel-note" *ngIf="servicos.length === 0">Nenhum serviço cadastrado ainda.</p>
 
-        <div class="tx-form-row" style="margin-top: 16px;">
+        <div class="tx-form-row">
           <div class="tx-field">
             <label class="tx-field-label" for="tx-novo-servico-nome">Nome do serviço</label>
             <input id="tx-novo-servico-nome" type="text" class="tx-input" [(ngModel)]="novoServicoNome" placeholder="Ex: Revisão">
@@ -1509,6 +1496,53 @@
           </button>
         </div>
       </div>
+
+      <div class="tx-servico-grid" style="margin-top: 24px;" *ngIf="servicos.length > 0">
+        <div class="tx-servico-card" *ngFor="let servico of servicos">
+          <ng-container *ngIf="servicoEditandoId !== servico.id; else modoEdicaoServico">
+            <div class="tx-servico-card-nome">{{ servico.nome }}</div>
+            <div class="tx-servico-card-ciclo">
+              {{ servico.dias_ciclo ? servico.dias_ciclo + ' dias de ciclo esperado' : 'Ciclo ainda não definido' }}
+            </div>
+            <div class="tx-servico-card-acoes">
+              <button class="tx-servico-item-editar" (click)="iniciarEdicaoServico(servico)" title="Editar serviço">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                  <path d="m15 5 4 4"></path>
+                </svg>
+              </button>
+              <button class="tx-servico-item-excluir" (click)="excluirServico(servico)" title="Excluir serviço">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                  <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                  <path d="M10 12h4"></path>
+                </svg>
+              </button>
+            </div>
+          </ng-container>
+
+          <ng-template #modoEdicaoServico>
+            <div class="tx-servico-edicao">
+              <div class="tx-field">
+                <label class="tx-field-label">Nome do serviço</label>
+                <input type="text" class="tx-input" [(ngModel)]="servicoEditandoNome">
+              </div>
+              <div class="tx-field">
+                <label class="tx-field-label">Ciclo esperado em dias (opcional)</label>
+                <input type="number" class="tx-input" min="1" [(ngModel)]="servicoEditandoCiclo">
+              </div>
+              <div class="tx-servico-edicao-acoes">
+                <button class="tx-btn tx-btn-secondary" (click)="cancelarEdicaoServico()">Cancelar</button>
+                <button class="tx-btn tx-btn-primary" (click)="salvarEdicaoServico()" [disabled]="salvandoEdicaoServico">
+                  <span *ngIf="salvandoEdicaoServico" class="tx-spinner"></span>
+                  {{ salvandoEdicaoServico ? 'Salvando...' : 'Salvar' }}
+                </button>
+              </div>
+            </div>
+          </ng-template>
+        </div>
+      </div>
+      <p class="tx-panel-note" style="margin-top: 16px;" *ngIf="servicos.length === 0">Nenhum serviço cadastrado ainda.</p>
 
     </div>
     <!-- ========================== FIM DA ABA SERVIÇOS ========================== -->
