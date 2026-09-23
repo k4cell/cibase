@@ -47,10 +47,13 @@ const TEMAS: Record<Tema, any> = {
     }
   },
   claro: {
-    bg: '#f8fafc', surface: '#ffffff', surfaceAlt: '#f1f5f9', border: '#e2e8f0', borderStrong: '#cbd5e1',
-    title: '#0f172a', body: '#334155', label: '#64748b', faint: '#94a3b8',
+    // Referência: paleta do Gmail -- canvas cinza-azulado perceptível por
+    // trás dos cards brancos (em vez de quase-branco sobre branco, que era
+    // o problema: card e fundo praticamente se confundiam).
+    bg: '#eef1f6', surface: '#ffffff', surfaceAlt: '#e7ebf1', border: '#d6dce4', borderStrong: '#b6c0cc',
+    title: '#0f172a', body: '#31363c', label: '#5b6472', faint: '#828b98',
     emeraldSoft: '#d1fae5', amberSoft: '#fef3c7', orangeSoft: '#ffedd5', redSoft: '#fee2e2',
-    navbarBg: 'rgba(255, 255, 255, 0.85)',
+    navbarBg: 'rgba(255, 255, 255, 0.92)',
     shadowXs: '0 1px 2px 0 rgb(15 23 42 / 0.06)',
     shadowSm: '0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.08)',
     shadowMd: '0 4px 12px -2px rgb(15 23 42 / 0.1), 0 2px 4px -2px rgb(15 23 42 / 0.06)',

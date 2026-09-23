@@ -1,5 +1,8 @@
 import { Injectable } from '@angular/core';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import {
+  signInWithEmailAndPassword, signOut, onAuthStateChanged, User,
+  updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider
+} from 'firebase/auth';
 import { auth } from './firebase.config';
 
 @Injectable({ providedIn: 'root' })
@@ -58,5 +61,23 @@ export class AuthService {
     // Devolve o token JWT atual, renovando sozinho se estiver perto de
     // expirar -- é esse token que o backend vai conferir em cada chamada.
     return this.usuarioAtual.getIdToken();
+  }
+
+  async atualizarNomeExibicao(nome: string): Promise<void> {
+    if (!this.usuarioAtual) throw new Error('Sem sessão.');
+    await updateProfile(this.usuarioAtual, { displayName: nome });
+    // updateProfile muda o objeto no SDK do Firebase, mas não dispara
+    // onAuthStateChanged -- sem reatribuir, a UI (shell, aqui) não percebe
+    // que o nome mudou.
+    this.usuarioAtual = auth.currentUser;
+  }
+
+  // Trocar senha exige reautenticar primeiro -- o Firebase recusa
+  // updatePassword direto se a sessão não for "recente o suficiente".
+  async alterarSenha(senhaAtual: string, novaSenha: string): Promise<void> {
+    if (!this.usuarioAtual || !this.usuarioAtual.email) throw new Error('Sem sessão.');
+    const credencial = EmailAuthProvider.credential(this.usuarioAtual.email, senhaAtual);
+    await reauthenticateWithCredential(this.usuarioAtual, credencial);
+    await updatePassword(this.usuarioAtual, novaSenha);
   }
 }

@@ -106,9 +106,9 @@
 
       <div class="tx-user-menu-wrap">
         <button class="tx-user-chip" (click)="mostrarMenuUsuario = !mostrarMenuUsuario">
-          <div class="tx-user-avatar">AD</div>
+          <div class="tx-user-avatar">{{ inicialUsuario() }}</div>
           <div class="tx-user-meta">
-            <span class="tx-user-name">Administrador</span>
+            <span class="tx-user-name">{{ nomeUsuarioExibicao() }}</span>
             <span class="tx-user-role">Conta principal</span>
           </div>
         </button>

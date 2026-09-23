@@ -1,51 +1,120 @@
 <div class="tx-page-header">
   <h1 class="tx-page-title">Configurações</h1>
-  <p class="tx-page-subtitle">Ajuste as regras do negócio para o seu tipo de operação.</p>
+  <p class="tx-page-subtitle">Sua conta, aparência e segurança.</p>
 </div>
 
-<div class="tx-panel" style="max-width: 560px;">
+<div class="tx-subnav">
+  <button class="tx-subnav-pill" [class.is-active]="subAba === 'perfil'" (click)="trocarSubAba('perfil')">Perfil</button>
+  <button class="tx-subnav-pill" [class.is-active]="subAba === 'acessibilidade'" (click)="trocarSubAba('acessibilidade')">Acessibilidade</button>
+  <button class="tx-subnav-pill" [class.is-active]="subAba === 'seguranca'" (click)="trocarSubAba('seguranca')">Segurança</button>
+</div>
+
+<!-- SUB-ABA: PERFIL -->
+<div class="tx-panel" style="max-width: 560px;" *ngIf="subAba === 'perfil'">
   <div class="tx-panel-head">
     <div>
-      <h2 class="tx-panel-title">Régua de Relacionamento (Farol de Risco)</h2>
-      <p class="tx-panel-caption">
-        Em quantos dias sem comprar um cliente muda de cor no painel. Cada negócio tem um ciclo
-        diferente — uma clínica de estética pode usar ~30 dias, um centro automotivo pode usar ~180.
-      </p>
+      <h2 class="tx-panel-title">Seu perfil</h2>
+      <p class="tx-panel-caption">Como seu nome aparece dentro do painel.</p>
     </div>
   </div>
 
   <div class="tx-field">
-    <label class="tx-field-label" for="tx-config-atencao">Dias até "Atenção" (amarelo)</label>
-    <input
-      id="tx-config-atencao"
-      type="number"
-      class="tx-input"
-      min="1"
-      [(ngModel)]="configuracoesService.diasAtencao"
-    >
+    <label class="tx-field-label">E-mail de acesso</label>
+    <input type="email" class="tx-input" [value]="authService.usuarioAtual?.email" disabled>
   </div>
 
   <div class="tx-field" style="margin-top: 14px;">
-    <label class="tx-field-label" for="tx-config-risco">Dias até "Risco Alto" (vermelho)</label>
-    <input
-      id="tx-config-risco"
-      type="number"
-      class="tx-input"
-      min="1"
-      [(ngModel)]="configuracoesService.diasRisco"
-    >
+    <label class="tx-field-label" for="tx-nome-exibicao">Nome de exibição</label>
+    <input id="tx-nome-exibicao" type="text" class="tx-input" [(ngModel)]="nomeExibicao" placeholder="Seu nome" maxlength="60">
   </div>
 
-  <p class="tx-panel-note">
-    Com esses números: até {{ configuracoesService.diasAtencao }} dias sem comprar, o cliente aparece
-    <strong>Saudável</strong> (verde); de {{ configuracoesService.diasAtencao + 1 }} a {{ configuracoesService.diasRisco }} dias,
-    <strong>Atenção</strong> (amarelo); acima de {{ configuracoesService.diasRisco }} dias, <strong>Risco Alto</strong> (vermelho).
-  </p>
+  <div style="margin-top: 18px;">
+    <button class="tx-btn tx-btn-primary" (click)="salvarPerfil()" [disabled]="salvandoPerfil">
+      <span *ngIf="salvandoPerfil" class="tx-spinner"></span>
+      {{ salvandoPerfil ? 'Salvando...' : 'Salvar Perfil' }}
+    </button>
+  </div>
+</div>
+
+<!-- SUB-ABA: ACESSIBILIDADE -->
+<div class="tx-panel" style="max-width: 560px;" *ngIf="subAba === 'acessibilidade'">
+  <div class="tx-panel-head">
+    <div>
+      <h2 class="tx-panel-title">Aparência</h2>
+      <p class="tx-panel-caption">Tema e cor de destaque do painel.</p>
+    </div>
+  </div>
+
+  <div class="tx-field">
+    <label class="tx-field-label">Tema</label>
+    <div class="tx-tema-opcoes">
+      <button class="tx-btn" [class.tx-btn-primary]="tema.temaAtual === 'escuro'" [class.tx-btn-secondary]="tema.temaAtual !== 'escuro'" (click)="tema.aplicarTema('escuro')">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
+        Escuro
+      </button>
+      <button class="tx-btn" [class.tx-btn-primary]="tema.temaAtual === 'claro'" [class.tx-btn-secondary]="tema.temaAtual !== 'claro'" (click)="tema.aplicarTema('claro')">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2"></path>
+          <path d="M12 20v2"></path>
+          <path d="m4.93 4.93 1.41 1.41"></path>
+          <path d="m17.66 17.66 1.41 1.41"></path>
+          <path d="M2 12h2"></path>
+          <path d="M20 12h2"></path>
+          <path d="m6.34 17.66-1.41 1.41"></path>
+          <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+        Claro
+      </button>
+    </div>
+  </div>
+
+  <div class="tx-field" style="margin-top: 20px;">
+    <label class="tx-field-label">Cor de destaque</label>
+    <div class="tx-cores-grid">
+      <button
+        *ngFor="let paleta of tema.PALETAS_COR"
+        class="tx-cor-opcao"
+        [class.is-active]="tema.corSelecionada === paleta.nome"
+        (click)="tema.selecionarCorDestaque(paleta)"
+      >
+        <span class="tx-color-swatch" [style.background]="paleta.primary"></span>
+        {{ paleta.nome }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SUB-ABA: SEGURANÇA -->
+<div class="tx-panel" style="max-width: 560px;" *ngIf="subAba === 'seguranca'">
+  <div class="tx-panel-head">
+    <div>
+      <h2 class="tx-panel-title">Alterar senha</h2>
+      <p class="tx-panel-caption">Por segurança, confirme a senha atual antes de definir uma nova.</p>
+    </div>
+  </div>
+
+  <div class="tx-field">
+    <label class="tx-field-label" for="tx-senha-atual">Senha atual</label>
+    <input id="tx-senha-atual" type="password" class="tx-input" [(ngModel)]="senhaAtual" autocomplete="current-password">
+  </div>
+
+  <div class="tx-field" style="margin-top: 14px;">
+    <label class="tx-field-label" for="tx-nova-senha">Nova senha</label>
+    <input id="tx-nova-senha" type="password" class="tx-input" [(ngModel)]="novaSenha" autocomplete="new-password">
+  </div>
+
+  <div class="tx-field" style="margin-top: 14px;">
+    <label class="tx-field-label" for="tx-confirmar-senha">Confirmar nova senha</label>
+    <input id="tx-confirmar-senha" type="password" class="tx-input" [(ngModel)]="confirmarNovaSenha" autocomplete="new-password" (keyup.enter)="alterarSenha()">
+  </div>
 
   <div style="margin-top: 18px;">
-    <button class="tx-btn tx-btn-primary" (click)="salvarConfiguracoes()" [disabled]="salvandoConfiguracoes">
-      <span *ngIf="salvandoConfiguracoes" class="tx-spinner"></span>
-      {{ salvandoConfiguracoes ? 'Salvando...' : 'Salvar Configurações' }}
+    <button class="tx-btn tx-btn-primary" (click)="alterarSenha()" [disabled]="alterandoSenha">
+      <span *ngIf="alterandoSenha" class="tx-spinner"></span>
+      {{ alterandoSenha ? 'Alterando...' : 'Alterar Senha' }}
     </button>
   </div>
 </div>

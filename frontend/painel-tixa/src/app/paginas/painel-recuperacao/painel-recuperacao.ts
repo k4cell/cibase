@@ -27,6 +27,13 @@ export class PainelRecuperacaoComponent implements OnInit, OnDestroy {
   filtroAtual: string = 'Todos';
   servicoFiltroId: string = 'todos';
 
+  // Régua de Relacionamento -- morava em Configurações, mudou pra cá porque
+  // é aqui que o efeito dela aparece de verdade (badge de oportunidade na Ficha).
+  mostrarModalRegua: boolean = false;
+  diasAtencaoEdicao: number = 30;
+  diasRiscoEdicao: number = 90;
+  salvandoRegua: boolean = false;
+
   readonly formatarValor = formatarValor;
 
   private desregistrar!: () => void;
@@ -84,5 +91,23 @@ export class PainelRecuperacaoComponent implements OnInit, OnDestroy {
 
   abrirWhatsApp(cliente: any) {
     this.clientesService.abrirWhatsApp(cliente, this.configuracoesService.diasAtencao, this.configuracoesService.diasRisco);
+  }
+
+  abrirModalRegua() {
+    this.diasAtencaoEdicao = this.configuracoesService.diasAtencao;
+    this.diasRiscoEdicao = this.configuracoesService.diasRisco;
+    this.mostrarModalRegua = true;
+  }
+
+  fecharModalRegua() {
+    this.mostrarModalRegua = false;
+  }
+
+  salvarRegua() {
+    this.salvandoRegua = true;
+    this.configuracoesService.salvarConfiguracoes(this.diasAtencaoEdicao, this.diasRiscoEdicao, (sucesso) => {
+      this.salvandoRegua = false;
+      if (sucesso) this.mostrarModalRegua = false;
+    });
   }
 }

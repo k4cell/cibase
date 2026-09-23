@@ -24,8 +24,11 @@ html, body {
   margin: 0;
 }
 
+/* var(--tx-bg) só existe depois que TemaService.inicializar() roda (ngOnInit
+   do AppComponent) -- o #0f172a fixo é só o instante antes disso, pra não
+   deixar branco padrão do navegador piscando na primeira pintura. */
 body {
-  background: #0f172a;
+  background: var(--tx-bg, #0f172a);
 }
 
 :root,
@@ -645,6 +648,30 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* Aba Acessibilidade (Configurações) -- mesmas cores do seletor da navbar,
+   só que expostas como uma tela de verdade em vez de um menu suspenso. */
+.tx-tema-opcoes { display: flex; gap: 10px; margin-top: 6px; }
+
+.tx-cores-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+
+.tx-cor-opcao {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-family: var(--tx-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tx-body);
+  background: var(--tx-surface-alt);
+  border: 1px solid var(--tx-border);
+  border-radius: var(--tx-r-full);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.tx-cor-opcao:hover { border-color: var(--tx-border-strong); }
+.tx-cor-opcao.is-active { color: var(--tx-title); background: var(--tx-primary-soft); border-color: var(--tx-primary-border); }
 
 .tx-user-menu-wrap { position: relative; }
 

@@ -70,10 +70,61 @@
     </button>
   </div>
 
-  <select class="tx-period-select" [(ngModel)]="servicoFiltroId">
-    <option value="todos">Todos os serviços</option>
-    <option *ngFor="let servico of servicosService.servicos" [value]="servico.id">{{ servico.nome }}</option>
-  </select>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <select class="tx-period-select" [(ngModel)]="servicoFiltroId">
+      <option value="todos">Todos os serviços</option>
+      <option *ngFor="let servico of servicosService.servicos" [value]="servico.id">{{ servico.nome }}</option>
+    </select>
+    <button class="tx-btn tx-btn-secondary" (click)="abrirModalRegua()" title="Ajustar a régua de relacionamento">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      Régua
+    </button>
+  </div>
+</div>
+
+<!-- MODAL: Régua de Relacionamento -->
+<div *ngIf="mostrarModalRegua" class="tx-modal-backdrop">
+  <div class="tx-modal-card tx-modal-card--sm">
+    <div class="tx-modal-header">
+      <div class="tx-modal-header-icon">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </div>
+      <div>
+        <h3 class="tx-modal-title">Régua de Relacionamento</h3>
+        <p class="tx-modal-caption">Em quantos dias sem comprar um cliente muda de cor no painel.</p>
+      </div>
+    </div>
+
+    <div class="tx-sale-body">
+      <div class="tx-field">
+        <label class="tx-field-label" for="tx-regua-atencao">Dias até "Atenção" (amarelo)</label>
+        <input id="tx-regua-atencao" type="number" class="tx-input" min="1" [(ngModel)]="diasAtencaoEdicao">
+      </div>
+
+      <div class="tx-field" style="margin-top: 14px;">
+        <label class="tx-field-label" for="tx-regua-risco">Dias até "Risco Alto" (vermelho)</label>
+        <input id="tx-regua-risco" type="number" class="tx-input" min="1" [(ngModel)]="diasRiscoEdicao">
+      </div>
+
+      <p class="tx-sale-hint" style="margin-top: 12px;">
+        Cada negócio tem um ciclo diferente -- uma clínica de estética pode usar ~30 dias, um centro automotivo pode usar ~180.
+      </p>
+    </div>
+
+    <div class="tx-sale-footer">
+      <button class="tx-btn tx-btn-secondary" (click)="fecharModalRegua()" [disabled]="salvandoRegua">Cancelar</button>
+      <button class="tx-btn tx-btn-primary" (click)="salvarRegua()" [disabled]="salvandoRegua">
+        <span *ngIf="salvandoRegua" class="tx-spinner"></span>
+        {{ salvandoRegua ? 'Salvando...' : 'Salvar' }}
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- TABELA DE CLIENTES -->

@@ -34,7 +34,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   private desregistrar!: () => void;
 
   constructor(
-    private authService: AuthService,
+    public authService: AuthService,
     private router: Router,
     private toast: ToastService,
     public tema: TemaService,
@@ -119,6 +119,16 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   abrirWhatsApp(cliente: any) {
     this.clientesService.abrirWhatsApp(cliente, this.configuracoesService.diasAtencao, this.configuracoesService.diasRisco);
+  }
+
+  // Nome de exibição vem do perfil (Configurações > Perfil) -- "Administrador"
+  // é só o valor padrão pra contas que nunca definiram um nome.
+  nomeUsuarioExibicao(): string {
+    return this.authService.usuarioAtual?.displayName || 'Administrador';
+  }
+
+  inicialUsuario(): string {
+    return this.nomeUsuarioExibicao().charAt(0).toUpperCase();
   }
 
   // Status do motor por serviço (ver services/motor.service.ts) do cliente

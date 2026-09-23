@@ -27,32 +27,37 @@ export class ConfiguracoesService {
     });
   }
 
-  salvarConfiguracoes(diasAtencao: number, diasRisco: number, aoFinalizar: () => void) {
+  // aoFinalizar(sucesso) SEMPRE é chamado (sucesso, erro de negócio ou falha
+  // HTTP) -- quem chama usa isso pra desligar o spinner; só fecha modal/tela
+  // quando `sucesso` vier true (erro de validação mantém o modal aberto pra
+  // corrigir os números).
+  salvarConfiguracoes(diasAtencao: number, diasRisco: number, aoFinalizar: (sucesso: boolean) => void) {
     if (diasAtencao <= 0 || diasRisco <= 0) {
-      aoFinalizar();
+      aoFinalizar(false);
       this.toast.mostrar('Os prazos precisam ser maiores que zero.', '#ffc107');
       return;
     }
     if (diasAtencao >= diasRisco) {
-      aoFinalizar();
+      aoFinalizar(false);
       this.toast.mostrar('O prazo de "Atenção" precisa ser menor que o de "Risco Alto".', '#ffc107');
       return;
     }
 
     this.http.put<any>(`${API_BASE_URL}/configuracoes`, { dias_atencao: diasAtencao, dias_risco: diasRisco }).subscribe({
       next: (resposta) => {
-        aoFinalizar();
         if (resposta.erro) {
+          aoFinalizar(false);
           this.toast.mostrar(resposta.erro, '#ffc107');
         } else {
           this.diasAtencao = diasAtencao;
           this.diasRisco = diasRisco;
           this.toast.mostrar('Configurações salvas! O farol de risco já está atualizado.', '#28a745');
+          aoFinalizar(true);
         }
         this.refresco.notificar();
       },
       error: () => {
-        aoFinalizar();
+        aoFinalizar(false);
         this.toast.mostrar('Falha ao salvar as configurações.', '#dc3545');
       }
     });
