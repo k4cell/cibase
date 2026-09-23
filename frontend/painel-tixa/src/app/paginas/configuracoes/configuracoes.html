@@ -1,0 +1,51 @@
+<div class="tx-page-header">
+  <h1 class="tx-page-title">Configurações</h1>
+  <p class="tx-page-subtitle">Ajuste as regras do negócio para o seu tipo de operação.</p>
+</div>
+
+<div class="tx-panel" style="max-width: 560px;">
+  <div class="tx-panel-head">
+    <div>
+      <h2 class="tx-panel-title">Régua de Relacionamento (Farol de Risco)</h2>
+      <p class="tx-panel-caption">
+        Em quantos dias sem comprar um cliente muda de cor no painel. Cada negócio tem um ciclo
+        diferente — uma clínica de estética pode usar ~30 dias, um centro automotivo pode usar ~180.
+      </p>
+    </div>
+  </div>
+
+  <div class="tx-field">
+    <label class="tx-field-label" for="tx-config-atencao">Dias até "Atenção" (amarelo)</label>
+    <input
+      id="tx-config-atencao"
+      type="number"
+      class="tx-input"
+      min="1"
+      [(ngModel)]="configuracoesService.diasAtencao"
+    >
+  </div>
+
+  <div class="tx-field" style="margin-top: 14px;">
+    <label class="tx-field-label" for="tx-config-risco">Dias até "Risco Alto" (vermelho)</label>
+    <input
+      id="tx-config-risco"
+      type="number"
+      class="tx-input"
+      min="1"
+      [(ngModel)]="configuracoesService.diasRisco"
+    >
+  </div>
+
+  <p class="tx-panel-note">
+    Com esses números: até {{ configuracoesService.diasAtencao }} dias sem comprar, o cliente aparece
+    <strong>Saudável</strong> (verde); de {{ configuracoesService.diasAtencao + 1 }} a {{ configuracoesService.diasRisco }} dias,
+    <strong>Atenção</strong> (amarelo); acima de {{ configuracoesService.diasRisco }} dias, <strong>Risco Alto</strong> (vermelho).
+  </p>
+
+  <div style="margin-top: 18px;">
+    <button class="tx-btn tx-btn-primary" (click)="salvarConfiguracoes()" [disabled]="salvandoConfiguracoes">
+      <span *ngIf="salvandoConfiguracoes" class="tx-spinner"></span>
+      {{ salvandoConfiguracoes ? 'Salvando...' : 'Salvar Configurações' }}
+    </button>
+  </div>
+</div>

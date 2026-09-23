@@ -1,0 +1,83 @@
+<div class="tx-page-header">
+  <h1 class="tx-page-title">Olá, Administrador</h1>
+  <p class="tx-page-subtitle">Para onde você quer ir?</p>
+</div>
+
+<div class="tx-home-grid">
+  <button class="tx-home-card" routerLink="/hoje">
+    <div class="tx-home-card-icon">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m9 11 3 3L22 4"></path>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+      </svg>
+    </div>
+    <h3 class="tx-home-card-title">Hoje</h3>
+    <p class="tx-home-card-desc">A fila pronta de quem contatar agora, com mensagem sugerida.</p>
+    <span class="tx-home-card-stat">{{ motorService.filaHoje.length }} na fila</span>
+  </button>
+
+  <button class="tx-home-card" routerLink="/recuperacao">
+    <div class="tx-home-card-icon">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="6"></circle>
+        <circle cx="12" cy="12" r="2"></circle>
+      </svg>
+    </div>
+    <h3 class="tx-home-card-title">Painel de Recuperação</h3>
+    <p class="tx-home-card-desc">Veja quem está em risco de sumir e aborde direto pelo WhatsApp.</p>
+    <span class="tx-home-card-stat">{{ clientesService.clientes.length }} clientes ativos</span>
+  </button>
+
+  <button class="tx-home-card" routerLink="/receita">
+    <div class="tx-home-card-icon">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 3v16a2 2 0 0 0 2 2h16"></path>
+        <path d="M7 16v-5"></path>
+        <path d="M12 16V8"></path>
+        <path d="M17 16v-3"></path>
+      </svg>
+    </div>
+    <h3 class="tx-home-card-title">Painel da Receita</h3>
+    <p class="tx-home-card-desc">Receita e vendas mês a mês, e quem mais comprou no período.</p>
+    <span class="tx-home-card-stat">R$ {{ formatarValor(estatisticasService.totalRecuperado) }} recuperados</span>
+  </button>
+
+  <button class="tx-home-card" routerLink="/clientes">
+    <div class="tx-home-card-icon">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+    </div>
+    <h3 class="tx-home-card-title">Clientes em Geral</h3>
+    <p class="tx-home-card-desc">Cadastro completo, importação de planilhas e histórico de compras.</p>
+    <span class="tx-home-card-stat">{{ clientesService.clientes.length }} cadastrados</span>
+  </button>
+
+  <button class="tx-home-card" routerLink="/servicos">
+    <div class="tx-home-card-icon">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+      </svg>
+    </div>
+    <h3 class="tx-home-card-title">Serviços</h3>
+    <p class="tx-home-card-desc">O catálogo do que a empresa vende, cada serviço com seu ciclo de recompra.</p>
+    <span class="tx-home-card-stat">{{ servicosService.servicos.length === 1 ? '1 serviço cadastrado' : servicosService.servicos.length + ' serviços cadastrados' }}</span>
+  </button>
+
+  <button class="tx-home-card" routerLink="/arquivados">
+    <div class="tx-home-card-icon">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+        <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+        <path d="M10 12h4"></path>
+      </svg>
+    </div>
+    <h3 class="tx-home-card-title">Arquivados</h3>
+    <p class="tx-home-card-desc">Clientes removidos das listas ativas, ainda recuperáveis.</p>
+    <span class="tx-home-card-stat">{{ clientesService.clientesArquivados.length }} arquivados</span>
+  </button>
+</div>

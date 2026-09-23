@@ -1,0 +1,152 @@
+<div class="tx-page-header">
+  <h1 class="tx-page-title">Painel da Receita</h1>
+  <p class="tx-page-subtitle">Evolução financeira consolidada da operação de pós-venda.</p>
+</div>
+
+<div class="tx-kpi-grid">
+  <div class="tx-kpi-card tx-kpi-card--success">
+    <div>
+      <h3 class="tx-kpi-label">Receita Total Recuperada</h3>
+      <h2 class="tx-kpi-value"><span class="tx-kpi-currency">R$</span>{{ formatarValor(estatisticasService.totalRecuperado) }}</h2>
+      <p class="tx-kpi-foot">Somatório das vendas registradas no painel</p>
+    </div>
+    <div class="tx-kpi-icon tx-kpi-icon--success">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+        <circle cx="12" cy="12" r="2"></circle>
+        <path d="M6 12h.01"></path>
+        <path d="M18 12h.01"></path>
+      </svg>
+    </div>
+  </div>
+
+  <div class="tx-kpi-card tx-kpi-card--info">
+    <div>
+      <h3 class="tx-kpi-label">Clientes Reativados</h3>
+      <h2 class="tx-kpi-value">{{ estatisticasService.clientesReativados }}</h2>
+      <p class="tx-kpi-foot">Clientes que voltaram a comprar após contato</p>
+    </div>
+    <div class="tx-kpi-icon tx-kpi-icon--info">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m17 2 4 4-4 4"></path>
+        <path d="M3 11v-1a4 4 0 0 1 4-4h14"></path>
+        <path d="m7 22-4-4 4-4"></path>
+        <path d="M21 13v1a4 4 0 0 1-4 4H3"></path>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<div class="tx-panel">
+  <div class="tx-panel-head">
+    <div>
+      <h2 class="tx-panel-title">Receita e vendas por mês</h2>
+      <p class="tx-panel-caption">Últimos {{ estatisticasService.periodoLabelTexto() }} registrados no painel.</p>
+    </div>
+    <select class="tx-period-select" [(ngModel)]="estatisticasService.periodoSelecionado" (ngModelChange)="estatisticasService.mudarPeriodoGrafico()">
+      <option value="3m">Últimos 3 meses</option>
+      <option value="6m">Últimos 6 meses</option>
+      <option value="12m">Últimos 12 meses</option>
+      <option value="5a">Últimos 5 anos</option>
+    </select>
+  </div>
+
+  <div class="tx-chart-stats-row">
+    <div class="tx-chart-stat">
+      <span class="tx-chart-stat-label">Receita no período</span>
+      <span class="tx-chart-stat-value tx-chart-stat-value--verde">R$ {{ formatarValor(estatisticasService.receitaDoPeriodo()) }}</span>
+    </div>
+    <div class="tx-chart-stat">
+      <span class="tx-chart-stat-label">Vendas no período</span>
+      <span class="tx-chart-stat-value tx-chart-stat-value--azul">{{ estatisticasService.vendasDoPeriodo() }}</span>
+    </div>
+    <div class="tx-chart-stat">
+      <span class="tx-chart-stat-label">Clientes que compraram</span>
+      <span class="tx-chart-stat-value">{{ estatisticasService.clientesPeriodoTotal }}</span>
+    </div>
+  </div>
+
+  <div class="tx-chart-legenda">
+    <span class="tx-chart-legenda-item"><span class="tx-chart-legenda-linha"></span> Receita (R$)</span>
+    <span class="tx-chart-legenda-item"><span class="tx-chart-legenda-linha tx-chart-legenda-linha--azul"></span> Vendas (qtd.)</span>
+  </div>
+
+  <div class="tx-chart-linha-wrap">
+    <svg class="tx-chart-linha-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <polygon [attr.points]="estatisticasService.pontosAreaGrafico('valor')" class="tx-chart-area"></polygon>
+      <polyline [attr.points]="estatisticasService.pontosLinhaGrafico('valor')" class="tx-chart-linha-path"></polyline>
+      <polyline [attr.points]="estatisticasService.pontosLinhaGrafico('quantidade')" class="tx-chart-linha-path tx-chart-linha-path--azul"></polyline>
+    </svg>
+
+    <div
+      class="tx-chart-coluna-mes"
+      *ngFor="let item of estatisticasService.receitaMensal; let i = index"
+      tabindex="0"
+      [style.left.%]="estatisticasService.posXGraficoPct(i)"
+      [attr.aria-label]="item.mes_label + ': Receita R$ ' + formatarValor(item.valor) + ', ' + item.quantidade + ' venda(s)'"
+    >
+      <div class="tx-chart-tooltip tx-chart-tooltip--multi">
+        <strong>{{ item.mes_label }}</strong>
+        <div><span class="tx-chart-tooltip-dot"></span>Receita: R$ {{ formatarValor(item.valor) }}</div>
+        <div><span class="tx-chart-tooltip-dot tx-chart-tooltip-dot--azul"></span>Vendas: {{ item.quantidade }}</div>
+      </div>
+      <span class="tx-chart-ponto" [style.bottom.%]="estatisticasService.posYGraficoPct(item, 'valor')"></span>
+      <span class="tx-chart-ponto tx-chart-ponto--azul" [style.bottom.%]="estatisticasService.posYGraficoPct(item, 'quantidade')"></span>
+    </div>
+  </div>
+
+  <div class="tx-chart-linha-labels">
+    <span
+      *ngFor="let item of estatisticasService.receitaMensal; let i = index"
+      class="tx-chart-linha-label"
+      [style.left.%]="estatisticasService.posXGraficoPct(i)"
+    >{{ item.mes_label }}</span>
+  </div>
+
+  <p *ngIf="estatisticasService.receitaMensal.length === 0" class="tx-panel-note">
+    Nenhuma venda registrada nesse período.
+  </p>
+
+  <p class="tx-panel-note">
+    Cada linha usa sua própria escala (comparação de tendência, não de valores absolutos na mesma régua).
+  </p>
+</div>
+
+<div class="tx-panel">
+  <div class="tx-panel-head">
+    <div>
+      <h2 class="tx-panel-title">Clientes que mais compraram</h2>
+      <p class="tx-panel-caption">Top 5 por receita, nos últimos {{ estatisticasService.periodoLabelTexto() }}.</p>
+    </div>
+  </div>
+
+  <div class="tx-table-scroll">
+    <table class="tx-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th style="text-align: center;">Compras</th>
+          <th>Receita</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let cliente of estatisticasService.topClientesPeriodo">
+          <td>
+            <div class="tx-client-cell">
+              <div class="tx-avatar">{{ cliente.nome ? cliente.nome.charAt(0).toUpperCase() : '?' }}</div>
+              <span class="tx-client-name">{{ cliente.nome }}</span>
+            </div>
+          </td>
+          <td style="text-align: center;">{{ cliente.total_compras }}</td>
+          <td class="tx-revenue-cell">R$ {{ formatarValor(cliente.total_valor) }}</td>
+        </tr>
+
+        <tr *ngIf="estatisticasService.topClientesPeriodo.length === 0">
+          <td colspan="3" class="tx-empty-state">
+            <div class="tx-empty-state-title">Nenhuma venda nesse período</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

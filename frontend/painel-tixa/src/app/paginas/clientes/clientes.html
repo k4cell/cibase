@@ -1,0 +1,143 @@
+<div class="tx-page-header">
+  <h1 class="tx-page-title">Clientes em Geral</h1>
+  <p class="tx-page-subtitle">Base cadastral completa, com todos os dados de contato e documento.</p>
+</div>
+
+<div class="tx-toolbar">
+  <p class="tx-toolbar-info">{{ clientesService.clientes.length }} cliente(s) cadastrado(s) na base.</p>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <button class="tx-btn tx-btn-secondary" routerLink="/arquivados">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+        <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+        <path d="M10 12h4"></path>
+      </svg>
+      Arquivados
+    </button>
+    <input type="file" id="tx-csv-input" accept=".csv,.xlsx" style="display:none" (change)="importarPlanilha($event)" [disabled]="importandoPlanilha">
+    <label for="tx-csv-input" class="tx-btn tx-btn-secondary" [style.opacity]="importandoPlanilha ? 0.6 : 1" [style.pointer-events]="importandoPlanilha ? 'none' : 'auto'">
+      <span *ngIf="importandoPlanilha" class="tx-spinner"></span>
+      <svg *ngIf="!importandoPlanilha" class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </svg>
+      {{ importandoPlanilha ? 'Importando...' : 'Importar Planilha' }}
+    </label>
+    <input type="file" id="tx-vendas-input" accept=".csv,.xlsx" style="display:none" (change)="importarVendas($event)" [disabled]="importandoVendas">
+    <label for="tx-vendas-input" class="tx-btn tx-btn-secondary" title="Importar vendas de clientes já cadastrados (casa por CPF)" [style.opacity]="importandoVendas ? 0.6 : 1" [style.pointer-events]="importandoVendas ? 'none' : 'auto'">
+      <span *ngIf="importandoVendas" class="tx-spinner"></span>
+      <svg *ngIf="!importandoVendas" class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </svg>
+      {{ importandoVendas ? 'Importando...' : 'Importar Vendas' }}
+    </label>
+    <button class="tx-btn tx-btn-primary" (click)="clientesService.abrirModalCadastro()">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 12h14"></path>
+        <path d="M12 5v14"></path>
+      </svg>
+      Novo Cliente
+    </button>
+  </div>
+</div>
+
+<div class="tx-table-card">
+  <div class="tx-table-head">
+    <h2>Cadastro completo</h2>
+    <span class="tx-table-count">{{ clientesService.clientes.length }} registro(s)</span>
+  </div>
+
+  <div class="tx-table-scroll">
+    <table class="tx-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Cliente</th>
+          <th>E-mail</th>
+          <th>CPF</th>
+          <th>Nascimento</th>
+          <th>Telefone</th>
+          <th>Receita</th>
+          <th style="text-align: center;">Ações</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let cliente of clientesService.clientes" class="tx-row-clickable" (click)="clientesService.abrirFichaCliente(cliente)" title="Ver ficha completa">
+          <td class="tx-id-cell">#{{ cliente.id }}</td>
+
+          <td>
+            <div class="tx-client-cell">
+              <div class="tx-avatar">{{ cliente.nome ? cliente.nome.charAt(0).toUpperCase() : '?' }}</div>
+              <span class="tx-client-name">{{ cliente.nome }}</span>
+            </div>
+          </td>
+
+          <td class="tx-cell-muted">{{ cliente.email }}</td>
+          <td class="tx-cell-muted">{{ cliente.cpf }}</td>
+          <td class="tx-cell-muted">{{ cliente.data_nascimento }}</td>
+
+          <td (click)="$event.stopPropagation()">
+            <div class="tx-phone-cell">
+              <span class="tx-phone-link" (click)="abrirWhatsApp(cliente)" title="Abrir WhatsApp">
+                {{ cliente.telefone }}
+              </span>
+              <button class="tx-whatsapp-btn" (click)="abrirWhatsApp(cliente)" title="Abrir WhatsApp">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+                </svg>
+                Whats
+              </button>
+            </div>
+          </td>
+
+          <td class="tx-revenue-cell">R$ {{ formatarValor(cliente.valor_recuperado) }}</td>
+
+          <td (click)="$event.stopPropagation()">
+            <div class="tx-actions-cell">
+              <button class="tx-action-btn tx-action-btn--view" (click)="clientesService.abrirFichaCliente(cliente)" title="Ver ficha completa">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                Ficha
+              </button>
+              <button class="tx-action-btn tx-action-btn--edit" (click)="clientesService.editarCliente(cliente)" title="Editar cliente">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path>
+                  <path d="m15 5 4 4"></path>
+                </svg>
+                Editar
+              </button>
+              <button class="tx-action-btn tx-action-btn--delete" (click)="clientesService.abrirConfirmacaoArquivar(cliente)" title="Arquivar cliente">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                  <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                  <path d="M10 12h4"></path>
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="clientesService.clientes.length === 0">
+          <td colspan="8" class="tx-empty-state">
+            <div class="tx-empty-state-icon">
+              <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M19 8v6"></path>
+                <path d="M22 11h-6"></path>
+              </svg>
+            </div>
+            <div class="tx-empty-state-title">Base de clientes vazia</div>
+            <div class="tx-empty-state-subtitle">Cadastre o primeiro cliente para começar a operar.</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "painel-tixa": {
+    "painel-cibase": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -63,10 +63,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "painel-tixa:build:production"
+              "buildTarget": "painel-cibase:build:production"
             },
             "development": {
-              "buildTarget": "painel-tixa:build:development"
+              "buildTarget": "painel-cibase:build:development"
             }
           },
           "defaultConfiguration": "development"

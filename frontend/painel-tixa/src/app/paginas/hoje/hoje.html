@@ -1,0 +1,267 @@
+<div class="tx-page-header">
+  <h1 class="tx-page-title">Oportunidades de hoje</h1>
+  <p class="tx-page-subtitle">A fila de contato, a carteira por serviço, e quem já foi procurado.</p>
+</div>
+
+<div class="tx-subnav">
+  <button class="tx-subnav-pill" [class.is-active]="subAbaHoje === 'fila'" (click)="trocarSubAbaHoje('fila')">Fila de hoje</button>
+  <button class="tx-subnav-pill" [class.is-active]="subAbaHoje === 'servico'" (click)="trocarSubAbaHoje('servico')">Por serviço</button>
+  <button class="tx-subnav-pill" [class.is-active]="subAbaHoje === 'contatados'" (click)="trocarSubAbaHoje('contatados')">Contatados</button>
+</div>
+
+<!-- SUB-ABA: FILA DE HOJE -->
+<div *ngIf="subAbaHoje === 'fila'">
+
+<div class="tx-kpi-grid tx-kpi-grid--compacta">
+  <div class="tx-kpi-card tx-kpi-card--info">
+    <div>
+      <h3 class="tx-kpi-label">Na fila hoje</h3>
+      <h2 class="tx-kpi-value">{{ motorService.filaHoje.length }}</h2>
+      <p class="tx-kpi-foot">Limite de {{ motorService.LIMITE_FILA_HOJE }} contatos por dia</p>
+    </div>
+    <div class="tx-kpi-icon tx-kpi-icon--info">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m9 11 3 3L22 4"></path>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+      </svg>
+    </div>
+  </div>
+
+  <div class="tx-kpi-card tx-kpi-card--success">
+    <div>
+      <h3 class="tx-kpi-label">Recuperado no mês</h3>
+      <h2 class="tx-kpi-value"><span class="tx-kpi-currency">R$</span>{{ formatarValor(estatisticasService.recuperadoNoMesAtual) }}</h2>
+      <p class="tx-kpi-foot">Vendas registradas neste mês</p>
+    </div>
+    <div class="tx-kpi-icon tx-kpi-icon--success">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+        <circle cx="12" cy="12" r="2"></circle>
+        <path d="M6 12h.01"></path>
+        <path d="M18 12h.01"></path>
+      </svg>
+    </div>
+  </div>
+
+  <button class="tx-kpi-card tx-kpi-card--warning tx-kpi-card--clicavel" *ngIf="motorService.clientesAdiados.length > 0" (click)="mostrarAdiados = true">
+    <div>
+      <h3 class="tx-kpi-label">Adiados</h3>
+      <h2 class="tx-kpi-value">{{ motorService.clientesAdiados.length }}</h2>
+      <p class="tx-kpi-foot">Clique para ver quem</p>
+    </div>
+    <div class="tx-kpi-icon tx-kpi-icon--warning">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 6v6l4 2"></path>
+      </svg>
+    </div>
+  </button>
+</div>
+
+<div class="tx-fila-lista" *ngIf="motorService.filaHoje.length > 0; else filaVazia">
+  <div class="tx-fila-card" *ngFor="let item of motorService.filaHoje">
+    <div class="tx-fila-card-topo">
+      <div class="tx-client-cell">
+        <div class="tx-avatar">{{ item.cliente.nome.charAt(0).toUpperCase() }}</div>
+        <div>
+          <div class="tx-client-name">{{ item.cliente.nome }}</div>
+          <div class="tx-fila-subtitulo">R$ {{ formatarValor(item.cliente.valor_recuperado) }} recuperados · há {{ item.dias }} dias</div>
+        </div>
+      </div>
+      <button class="tx-fila-recusar" (click)="abrirConfirmacaoExcluirDaFila(item)" title="Tirar da fila de hoje">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 6 6 18"></path>
+          <path d="m6 6 12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="tx-fila-chips">
+      <span class="tx-badge">{{ item.servicoNome }}</span>
+      <span class="tx-badge" [ngClass]="classeStatus(item.status)">{{ item.status }}</span>
+      <span class="tx-badge">{{ item.faixaValor }}</span>
+      <span class="tx-badge" *ngIf="item.baixaConfianca">Estimativa</span>
+    </div>
+
+    <p class="tx-fila-motivo">{{ item.motivo }}</p>
+
+    <textarea class="tx-fila-textarea" [(ngModel)]="item.mensagemDraft" rows="2"></textarea>
+
+    <div class="tx-fila-acoes">
+      <button class="tx-btn tx-btn-primary" (click)="motorService.enviarMensagemFila(item)">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+        </svg>
+        Enviar
+      </button>
+      <button class="tx-btn tx-btn-secondary" (click)="motorService.adiarContatoFila(item)">Adiar</button>
+    </div>
+  </div>
+</div>
+
+<ng-template #filaVazia>
+  <div class="tx-table-card">
+    <div class="tx-empty-state">
+      <div class="tx-empty-state-icon">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m9 11 3 3L22 4"></path>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+        </svg>
+      </div>
+      <div class="tx-empty-state-title">Nenhuma oportunidade pra hoje</div>
+      <div class="tx-empty-state-subtitle">Todo mundo em dia, ou aguardando o prazo de retorno.</div>
+    </div>
+  </div>
+</ng-template>
+
+</div>
+<!-- FIM SUB-ABA: FILA DE HOJE -->
+
+<!-- SUB-ABA: POR SERVIÇO -->
+<div *ngIf="subAbaHoje === 'servico'">
+
+  <div class="tx-toolbar">
+    <p class="tx-toolbar-info">Serviço:</p>
+    <select class="tx-period-select" [(ngModel)]="servicoPorServicoId" (ngModelChange)="filtrarClientesPorServico()">
+      <option value="todos">Todos</option>
+      <option *ngFor="let servico of servicosService.servicos" [value]="servico.id">{{ servico.nome }}</option>
+    </select>
+    <p class="tx-toolbar-info">{{ clientesPorServicoFiltrados().length }} de {{ motorService.clientesPorServico.length }} cliente(s).</p>
+  </div>
+
+  <div class="tx-filter-group" style="margin-bottom: 18px;">
+    <button class="tx-filter-pill tx-filter-pill--neutral" [class.is-active]="filtroStatusPorServico === 'Todos'" (click)="filtroStatusPorServico = 'Todos'">Todos</button>
+    <button class="tx-filter-pill tx-filter-pill--info" [class.is-active]="filtroStatusPorServico === 'Recompra próxima'" (click)="filtroStatusPorServico = 'Recompra próxima'"><span class="tx-dot"></span> Recompra próxima</button>
+    <button class="tx-filter-pill tx-filter-pill--warning" [class.is-active]="filtroStatusPorServico === 'Atrasado'" (click)="filtroStatusPorServico = 'Atrasado'"><span class="tx-dot"></span> Atrasado</button>
+    <button class="tx-filter-pill tx-filter-pill--orange" [class.is-active]="filtroStatusPorServico === 'Adormecido'" (click)="filtroStatusPorServico = 'Adormecido'"><span class="tx-dot"></span> Adormecido</button>
+    <button class="tx-filter-pill tx-filter-pill--danger" [class.is-active]="filtroStatusPorServico === 'Frio'" (click)="filtroStatusPorServico = 'Frio'"><span class="tx-dot"></span> Frio</button>
+  </div>
+
+  <div class="tx-table-card">
+    <div class="tx-table-scroll">
+      <table class="tx-table" style="table-layout: fixed;">
+        <thead>
+          <tr>
+            <th style="width: 220px;">Cliente</th>
+            <th style="width: 180px;" *ngIf="servicoPorServicoId === 'todos'">Serviço</th>
+            <th style="width: 160px;">Status</th>
+            <th style="width: 120px; text-align: right;">Sem comprar</th>
+            <th style="width: 90px; text-align: center;">Valor</th>
+            <th style="width: 110px; text-align: center;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of clientesPorServicoFiltrados()">
+            <td>
+              <div class="tx-client-cell">
+                <div class="tx-avatar">{{ item.cliente.nome.charAt(0).toUpperCase() }}</div>
+                <span class="tx-client-name">{{ item.cliente.nome }}</span>
+              </div>
+            </td>
+            <td style="overflow: hidden; text-overflow: ellipsis;" *ngIf="servicoPorServicoId === 'todos'">{{ item.servicoNome }}</td>
+            <td><span class="tx-badge" [ngClass]="classeStatus(item.status)">{{ item.status }}</span></td>
+            <td style="text-align: right;">{{ item.dias }} dias</td>
+            <td style="text-align: center;">{{ item.faixaValor }}</td>
+            <td style="text-align: center;">
+              <button class="tx-btn tx-btn-primary" style="padding: 6px 14px; font-size: 12.5px;" (click)="motorService.enviarMensagemFila(item)">Enviar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tx-panel-note" *ngIf="clientesPorServicoFiltrados().length === 0">Ninguém aqui com esse filtro.</p>
+  </div>
+
+</div>
+<!-- FIM SUB-ABA: POR SERVIÇO -->
+
+<!-- SUB-ABA: CONTATADOS -->
+<div *ngIf="subAbaHoje === 'contatados'">
+
+  <p class="tx-panel-note" style="margin-bottom: 14px;">Todo cliente que já recebeu um clique em "Enviar" aparece aqui — ainda sem marcar quem respondeu.</p>
+
+  <div class="tx-adiados-lista" *ngIf="motorService.contatados.length > 0">
+    <div class="tx-adiados-item" *ngFor="let item of motorService.contatados">
+      <div class="tx-client-cell">
+        <div class="tx-avatar">{{ item.cliente_nome.charAt(0).toUpperCase() }}</div>
+        <div>
+          <div class="tx-client-name">{{ item.cliente_nome }}</div>
+          <div class="tx-fila-subtitulo">{{ item.servico_nome }}</div>
+        </div>
+      </div>
+      <span class="tx-toolbar-info">{{ item.dias_atras === 0 ? 'Enviado hoje' : 'Enviado há ' + item.dias_atras + ' dia(s)' }}</span>
+    </div>
+  </div>
+  <p class="tx-panel-note" *ngIf="motorService.contatados.length === 0">Ninguém foi contatado ainda.</p>
+
+</div>
+<!-- FIM SUB-ABA: CONTATADOS -->
+
+<!-- MODAL: Lista de Adiados -->
+<div *ngIf="mostrarAdiados" class="tx-modal-backdrop">
+  <div class="tx-modal-card tx-modal-card--lg">
+    <div class="tx-modal-header">
+      <div class="tx-modal-header-icon tx-modal-header-icon--warning">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+        </svg>
+      </div>
+      <div>
+        <h3 class="tx-modal-title">Adiados</h3>
+        <p class="tx-modal-caption">Aguardando a data de retorno pra voltar à fila.</p>
+      </div>
+    </div>
+
+    <div class="tx-adiados-lista tx-adiados-lista--modal">
+      <div class="tx-adiados-item" *ngFor="let item of motorService.clientesAdiados">
+        <div class="tx-client-cell">
+          <div class="tx-avatar">{{ item.clienteNome.charAt(0).toUpperCase() }}</div>
+          <div>
+            <div class="tx-client-name">{{ item.clienteNome }}</div>
+            <div class="tx-fila-subtitulo">{{ item.servicoNome }} · {{ item.textoRetorno }}</div>
+          </div>
+        </div>
+        <div class="tx-adiados-item-acoes">
+          <button class="tx-btn tx-btn-secondary" (click)="motorService.trazerDeVoltaAgora(item)">Trazer de volta</button>
+          <button class="tx-btn tx-btn-primary" style="padding: 6px 14px; font-size: 12.5px;" (click)="motorService.contatarAdiado(item)">Contatar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tx-modal-footer">
+      <button class="tx-btn tx-btn-secondary" (click)="mostrarAdiados = false">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Tirar Cliente da Fila de Hoje -->
+<div *ngIf="itemParaExcluirDaFila" class="tx-modal-backdrop">
+  <div class="tx-modal-card tx-modal-card--sm">
+    <div class="tx-modal-header">
+      <div class="tx-modal-header-icon">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 6 6 18"></path>
+          <path d="m6 6 12 12"></path>
+        </svg>
+      </div>
+      <div>
+        <h3 class="tx-modal-title">Tirar da fila</h3>
+        <p class="tx-modal-caption">Some só de hoje -- pode voltar a aparecer depois.</p>
+      </div>
+    </div>
+
+    <div class="tx-sale-body">
+      <div class="tx-sale-client-chip">
+        <span class="tx-avatar">{{ itemParaExcluirDaFila.cliente.nome.charAt(0).toUpperCase() }}</span>
+        {{ itemParaExcluirDaFila.cliente.nome }}
+      </div>
+      <p class="tx-sale-hint">Certeza que deseja tirar esse cliente da fila de hoje?</p>
+    </div>
+
+    <div class="tx-sale-footer">
+      <button class="tx-btn tx-btn-secondary" (click)="fecharConfirmacaoExcluirDaFila()">Cancelar</button>
+      <button class="tx-btn tx-btn-success" (click)="confirmarExclusaoDaFila()">Tirar da fila</button>
+    </div>
+  </div>
+</div>

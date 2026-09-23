@@ -1,0 +1,112 @@
+<div class="tx-page-header">
+  <h1 class="tx-page-title">Serviços</h1>
+  <p class="tx-page-subtitle">
+    Cada serviço tem seu próprio ciclo de recompra esperado — o mesmo cliente pode
+    estar atrasado na revisão e em dia na manutenção ao mesmo tempo.
+  </p>
+</div>
+
+<div class="tx-panel" style="max-width: 560px;">
+  <div class="tx-panel-head">
+    <div>
+      <h2 class="tx-panel-title">Adicionar serviço</h2>
+    </div>
+  </div>
+
+  <div class="tx-form-row">
+    <div class="tx-field">
+      <label class="tx-field-label" for="tx-novo-servico-nome">Nome do serviço</label>
+      <input id="tx-novo-servico-nome" type="text" class="tx-input" [(ngModel)]="novoServicoNome" placeholder="Ex: Revisão">
+    </div>
+    <div class="tx-field">
+      <label class="tx-field-label" for="tx-novo-servico-ciclo">Ciclo esperado em dias</label>
+      <input id="tx-novo-servico-ciclo" type="number" class="tx-input" min="1" [(ngModel)]="novoServicoCiclo" placeholder="Ex: 180">
+    </div>
+  </div>
+
+  <div style="margin-top: 14px;">
+    <button class="tx-btn tx-btn-primary" (click)="adicionarServico()" [disabled]="salvandoServico">
+      <span *ngIf="salvandoServico" class="tx-spinner"></span>
+      {{ salvandoServico ? 'Salvando...' : 'Adicionar Serviço' }}
+    </button>
+  </div>
+</div>
+
+<div class="tx-servico-grid" style="margin-top: 24px;" *ngIf="servicosService.servicos.length > 0">
+  <div class="tx-servico-card" *ngFor="let servico of servicosService.servicos">
+    <ng-container *ngIf="servicoEditandoId !== servico.id; else modoEdicaoServico">
+      <div class="tx-servico-card-nome">{{ servico.nome }}</div>
+      <div class="tx-servico-card-ciclo">
+        {{ servico.dias_ciclo ? servico.dias_ciclo + ' dias de ciclo esperado' : 'Ciclo ainda não definido' }}
+      </div>
+      <div class="tx-servico-card-acoes">
+        <button class="tx-servico-item-editar" (click)="iniciarEdicaoServico(servico)" title="Editar serviço">
+          <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
+        </button>
+        <button class="tx-servico-item-excluir" (click)="abrirConfirmacaoExcluirServico(servico)" title="Excluir serviço">
+          <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </ng-container>
+
+    <ng-template #modoEdicaoServico>
+      <div class="tx-servico-edicao">
+        <div class="tx-field">
+          <label class="tx-field-label">Nome do serviço</label>
+          <input type="text" class="tx-input" [(ngModel)]="servicoEditandoNome">
+        </div>
+        <div class="tx-field">
+          <label class="tx-field-label">Ciclo esperado em dias</label>
+          <input type="number" class="tx-input" min="1" [(ngModel)]="servicoEditandoCiclo">
+        </div>
+        <div class="tx-servico-edicao-acoes">
+          <button class="tx-btn tx-btn-secondary" (click)="cancelarEdicaoServico()">Cancelar</button>
+          <button class="tx-btn tx-btn-primary" (click)="salvarEdicaoServico()" [disabled]="salvandoEdicaoServico">
+            <span *ngIf="salvandoEdicaoServico" class="tx-spinner"></span>
+            {{ salvandoEdicaoServico ? 'Salvando...' : 'Salvar' }}
+          </button>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+</div>
+<p class="tx-panel-note" style="margin-top: 16px;" *ngIf="servicosService.servicos.length === 0">Nenhum serviço cadastrado ainda.</p>
+
+<!-- MODAL: Confirmar Exclusão de Serviço -->
+<div *ngIf="servicoParaExcluir" class="tx-modal-backdrop">
+  <div class="tx-modal-card tx-modal-card--sm">
+    <div class="tx-modal-header">
+      <div class="tx-modal-header-icon tx-modal-header-icon--danger">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      </div>
+      <div>
+        <h3 class="tx-modal-title">Excluir serviço</h3>
+        <p class="tx-modal-caption">Essa ação não pode ser desfeita.</p>
+      </div>
+    </div>
+
+    <div class="tx-sale-body">
+      <p class="tx-sale-hint">Tem certeza que deseja excluir o serviço <strong>{{ servicoParaExcluir.nome }}</strong>?</p>
+    </div>
+
+    <div class="tx-sale-footer">
+      <button class="tx-btn tx-btn-secondary" (click)="fecharConfirmacaoExcluirServico()" [disabled]="excluindoServico">Cancelar</button>
+      <button class="tx-btn tx-btn-danger" (click)="confirmarExclusaoServico()" [disabled]="excluindoServico">
+        <span *ngIf="excluindoServico" class="tx-spinner"></span>
+        {{ excluindoServico ? 'Excluindo...' : 'Excluir Serviço' }}
+      </button>
+    </div>
+  </div>
+</div>

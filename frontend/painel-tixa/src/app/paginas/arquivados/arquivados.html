@@ -1,0 +1,92 @@
+<button class="tx-voltar-link" routerLink="/clientes">
+  <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="m15 18-6-6 6-6"></path>
+  </svg>
+  Clientes em Geral
+</button>
+
+<div class="tx-page-header">
+  <h1 class="tx-page-title">Arquivados</h1>
+  <p class="tx-page-subtitle">Clientes removidos das listas ativas. O histórico de vendas é mantido até a exclusão permanente.</p>
+</div>
+
+<div class="tx-toolbar">
+  <p class="tx-toolbar-info">{{ clientesService.clientesArquivados.length }} cliente(s) arquivado(s).</p>
+</div>
+
+<div class="tx-table-card">
+  <div class="tx-table-head">
+    <h2>Clientes arquivados</h2>
+    <span class="tx-table-count">{{ clientesService.clientesArquivados.length }} registro(s)</span>
+  </div>
+
+  <div class="tx-table-scroll">
+    <table class="tx-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Cliente</th>
+          <th>E-mail</th>
+          <th>CPF</th>
+          <th>Telefone</th>
+          <th>Receita histórica</th>
+          <th style="text-align: center;">Ações</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let cliente of clientesService.clientesArquivados">
+          <td class="tx-id-cell">#{{ cliente.id }}</td>
+
+          <td>
+            <div class="tx-client-cell">
+              <div class="tx-avatar">{{ cliente.nome ? cliente.nome.charAt(0).toUpperCase() : '?' }}</div>
+              <span class="tx-client-name">{{ cliente.nome }}</span>
+            </div>
+          </td>
+
+          <td class="tx-cell-muted">{{ cliente.email }}</td>
+          <td class="tx-cell-muted">{{ cliente.cpf }}</td>
+          <td class="tx-cell-muted">{{ cliente.telefone }}</td>
+          <td class="tx-revenue-cell">R$ {{ formatarValor(cliente.valor_recuperado) }}</td>
+
+          <td>
+            <div class="tx-actions-cell">
+              <button class="tx-action-btn tx-action-btn--edit" (click)="clientesService.reativarCliente(cliente)" title="Reativar cliente">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+                Reativar
+              </button>
+              <button class="tx-action-btn tx-action-btn--delete" (click)="clientesService.abrirConfirmacaoExclusaoPermanente(cliente)" title="Excluir permanentemente">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 6h18"></path>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+                Excluir
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="clientesService.clientesArquivados.length === 0">
+          <td colspan="7" class="tx-empty-state">
+            <div class="tx-empty-state-icon">
+              <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                <path d="M10 12h4"></path>
+              </svg>
+            </div>
+            <div class="tx-empty-state-title">Nenhum cliente arquivado</div>
+            <div class="tx-empty-state-subtitle">Clientes arquivados na aba "Clientes em Geral" aparecem aqui.</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

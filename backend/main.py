@@ -3,15 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import clientes, configuracoes, importacao, motor, servicos, vendas
 
 # ==============================================================================
-# CONFIGURAÇÕES INICIAIS DA API (MOTOR TIXA)
+# CONFIGURAÇÕES INICIAIS DA API (MOTOR CIBASE)
 # ==============================================================================
 # O token do Firebase agora é exigido em cada router individualmente (veja
 # routers/*.py: APIRouter(dependencies=[Depends(verificar_token)])), não mais
 # aqui no app inteiro -- assim dá pra ter uma rota pública, como o /healthz
 # abaixo, que serviços de monitoramento (Render) conseguem checar sem token.
 app = FastAPI(
-    title="Motor Backend - Projeto Tixa",
-    version="0.13.0"
+    title="Motor Backend - CiBase",
+    version="0.23.0"
 )
 
 app.add_middleware(

@@ -1,0 +1,178 @@
+<div class="tx-page-header">
+  <h1 class="tx-page-title">Painel de Recuperação</h1>
+  <p class="tx-page-subtitle">Acompanhe a saúde da carteira de clientes e a receita recuperada.</p>
+</div>
+
+<!-- KPIs -->
+<div class="tx-kpi-grid">
+  <div class="tx-kpi-card tx-kpi-card--success">
+    <div>
+      <h3 class="tx-kpi-label">Receita Total Recuperada</h3>
+      <h2 class="tx-kpi-value"><span class="tx-kpi-currency">R$</span>{{ formatarValor(estatisticasService.totalRecuperado) }}</h2>
+      <p class="tx-kpi-foot">
+        <span class="tx-kpi-trend">
+          <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+            <polyline points="16 7 22 7 22 13"></polyline>
+          </svg>
+          Acumulado
+        </span>
+        Somatório das vendas registradas no painel
+      </p>
+    </div>
+    <div class="tx-kpi-icon tx-kpi-icon--success">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+        <circle cx="12" cy="12" r="2"></circle>
+        <path d="M6 12h.01"></path>
+        <path d="M18 12h.01"></path>
+      </svg>
+    </div>
+  </div>
+
+  <div class="tx-kpi-card tx-kpi-card--info">
+    <div>
+      <h3 class="tx-kpi-label">Clientes Reativados</h3>
+      <h2 class="tx-kpi-value">{{ estatisticasService.clientesReativados }}</h2>
+      <p class="tx-kpi-foot">Clientes que voltaram a comprar após contato</p>
+    </div>
+    <div class="tx-kpi-icon tx-kpi-icon--info">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m17 2 4 4-4 4"></path>
+        <path d="M3 11v-1a4 4 0 0 1 4-4h14"></path>
+        <path d="m7 22-4-4 4-4"></path>
+        <path d="M21 13v1a4 4 0 0 1-4 4H3"></path>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- BARRA DE AÇÕES -->
+<div class="tx-toolbar">
+  <div class="tx-filter-group">
+    <button class="tx-filter-pill tx-filter-pill--neutral" [class.is-active]="filtroAtual === 'Todos'" (click)="definirFiltro('Todos')">
+      Todos
+    </button>
+    <button class="tx-filter-pill tx-filter-pill--danger" [class.is-active]="filtroAtual === 'risco'" (click)="definirFiltro('risco')">
+      <span class="tx-dot"></span> Risco Alto
+    </button>
+    <button class="tx-filter-pill tx-filter-pill--warning" [class.is-active]="filtroAtual === 'atencao'" (click)="definirFiltro('atencao')">
+      <span class="tx-dot"></span> Atenção
+    </button>
+    <button class="tx-filter-pill tx-filter-pill--success" [class.is-active]="filtroAtual === 'saudavel'" (click)="definirFiltro('saudavel')">
+      <span class="tx-dot"></span> Saudáveis
+    </button>
+  </div>
+
+  <button class="tx-btn tx-btn-primary" (click)="clientesService.abrirModalCadastro()">
+    <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 12h14"></path>
+      <path d="M12 5v14"></path>
+    </svg>
+    Novo Cliente
+  </button>
+</div>
+
+<!-- TABELA DE CLIENTES -->
+<div class="tx-table-card">
+  <div class="tx-table-head">
+    <h2>Carteira de clientes</h2>
+    <span class="tx-table-count">{{ obterClientesFiltrados().length }} registro(s)</span>
+  </div>
+
+  <div class="tx-table-scroll">
+    <table class="tx-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Cliente</th>
+          <th>Perfil Comercial</th>
+          <th>Contato / WhatsApp</th>
+          <th style="text-align: center;">Compras</th>
+          <th>Receita</th>
+          <th style="text-align: center;">Ações</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let cliente of obterClientesFiltrados()" class="tx-row-clickable" (click)="clientesService.abrirFichaCliente(cliente)" title="Ver ficha completa">
+          <td class="tx-id-cell">#{{ cliente.id }}</td>
+
+          <td>
+            <div class="tx-client-cell">
+              <div class="tx-avatar">{{ cliente.nome ? cliente.nome.charAt(0).toUpperCase() : '?' }}</div>
+              <span class="tx-client-name">{{ cliente.nome }}</span>
+            </div>
+          </td>
+
+          <td>
+            <div class="tx-perfil-motor-cell" *ngIf="perfilMotorCliente(cliente.id) as perfil; else tudoEmDiaBadge">
+              <span class="tx-badge" [ngClass]="classeStatus(perfil.status)">{{ perfil.servicoNome }} · {{ perfil.status }}</span>
+              <span class="tx-badge-extra" *ngIf="perfil.extras > 0">+{{ perfil.extras }} serviço{{ perfil.extras > 1 ? 's' : '' }}</span>
+            </div>
+            <ng-template #tudoEmDiaBadge>
+              <span class="tx-badge tx-status--em-dia">Em dia</span>
+            </ng-template>
+          </td>
+
+          <td (click)="$event.stopPropagation()">
+            <div class="tx-phone-cell">
+              <span class="tx-phone-link" (click)="abrirWhatsApp(cliente)" title="Abrir WhatsApp">
+                {{ cliente.telefone }}
+              </span>
+              <button class="tx-whatsapp-btn" (click)="abrirWhatsApp(cliente)" title="Abrir WhatsApp">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+                </svg>
+                Whats
+              </button>
+            </div>
+          </td>
+
+          <td style="text-align: center;">{{ cliente.total_compras }}</td>
+
+          <td class="tx-revenue-cell">R$ {{ formatarValor(cliente.valor_recuperado) }}</td>
+
+          <td (click)="$event.stopPropagation()">
+            <div class="tx-actions-cell">
+              <button class="tx-action-btn tx-action-btn--sale" (click)="clientesService.abrirModalVenda(cliente)" title="Registrar venda">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14"></path>
+                  <path d="M12 5v14"></path>
+                </svg>
+                Venda
+              </button>
+              <button class="tx-action-btn tx-action-btn--edit" (click)="clientesService.editarCliente(cliente)" title="Editar cliente">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path>
+                  <path d="m15 5 4 4"></path>
+                </svg>
+                Editar
+              </button>
+              <button class="tx-action-btn tx-action-btn--delete" (click)="clientesService.abrirConfirmacaoArquivar(cliente)" title="Arquivar cliente">
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                  <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                  <path d="M10 12h4"></path>
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="obterClientesFiltrados().length === 0">
+          <td colspan="7" class="tx-empty-state">
+            <div class="tx-empty-state-icon">
+              <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+              </svg>
+            </div>
+            <div class="tx-empty-state-title">Nenhum cliente encontrado</div>
+            <div class="tx-empty-state-subtitle">Ajuste o filtro ou cadastre um novo cliente para começar.</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

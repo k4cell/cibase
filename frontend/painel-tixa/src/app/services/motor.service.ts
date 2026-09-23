@@ -1,0 +1,257 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { API_BASE_URL } from '../api.config';
+import { ToastService } from './toast.service';
+import { ClientesService } from './clientes.service';
+import { RefrescoService } from './refresco.service';
+
+// ==============================================================================
+// MOTOR DE RECOMENDAÇÃO -- consome o motor do backend (classificação por
+// cliente+serviço, travas e ordenação, conforme o documento
+// "motor-de-recomendacao.pdf"). Alimenta a aba "Atividades" (Hoje) e o badge
+// de status do Painel de Recuperação.
+// ==============================================================================
+@Injectable({ providedIn: 'root' })
+export class MotorService {
+  readonly LIMITE_FILA_HOJE = 10;
+
+  filaHoje: any[] = [];
+  clientesAdiados: any[] = [];
+  contatados: any[] = [];
+  contatadosCarregados: boolean = false;
+  clientesPorServico: any[] = [];
+  clientesPorServicoCarregados: boolean = false;
+
+  // Classificação "crua" do motor (todo cliente com pelo menos um serviço
+  // fora do Ativo, já sem quem está travado por contato), agrupada por
+  // cliente pra alimentar o badge "Perfil Comercial" do Painel de Recuperação.
+  // Por ora aceitamos que um cliente marcado "não contatar" apareça como "Em
+  // dia" mesmo se estiver atrasado -- resolver isso é trabalho futuro.
+  classificacaoPorCliente: { [clienteId: number]: any[] } = {};
+
+  constructor(
+    private http: HttpClient,
+    private toast: ToastService,
+    private clientesService: ClientesService,
+    private refresco: RefrescoService
+  ) {}
+
+  montarFilaDeHoje() {
+    this.carregarFilaMotor();
+    this.carregarAdiadosMotor();
+  }
+
+  private carregarFilaMotor() {
+    this.http.get<any>(`${API_BASE_URL}/motor/fila?tamanho=${this.LIMITE_FILA_HOJE}`).subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.toast.mostrar('Erro: ' + dados.erro, '#dc3545'); return; }
+        this.filaHoje = (dados.fila || []).map((linha: any) => this.montarItemFila(linha));
+        this.refresco.notificar();
+      },
+      error: () => this.toast.mostrar('Falha ao montar a fila de hoje.', '#dc3545')
+    });
+  }
+
+  filtrarClientesPorServico(servicoId: string) {
+    this.clientesPorServicoCarregados = true;
+    const filtroServico = servicoId === 'todos' ? '' : `&servico_id=${servicoId}`;
+    this.http.get<any>(`${API_BASE_URL}/motor/fila?tamanho=9999${filtroServico}`).subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.toast.mostrar('Erro: ' + dados.erro, '#dc3545'); return; }
+        this.clientesPorServico = (dados.fila || []).map((linha: any) => this.montarItemFila(linha));
+        this.refresco.notificar();
+      },
+      error: () => this.toast.mostrar('Falha ao carregar os clientes desse serviço.', '#dc3545')
+    });
+  }
+
+  carregarContatados() {
+    this.http.get<any>(`${API_BASE_URL}/motor/contatados`).subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.toast.mostrar('Erro: ' + dados.erro, '#dc3545'); return; }
+        this.contatados = dados.contatados || [];
+        this.contatadosCarregados = true;
+        this.refresco.notificar();
+      },
+      error: () => this.toast.mostrar('Falha ao carregar os contatados.', '#dc3545')
+    });
+  }
+
+  // O motor devolve cliente_id/servico_id; o resto dos dados do cliente
+  // (telefone, valor recuperado) já está carregado em ClientesService.
+  private montarItemFila(linha: any) {
+    const cliente = this.clientesService.clientes.find(c => c.id === linha.cliente_id)
+      || { id: linha.cliente_id, nome: linha.cliente_nome, telefone: '', valor_recuperado: 0 };
+
+    return {
+      cliente,
+      servicoId: linha.servico_id,
+      servicoNome: linha.servico_nome,
+      dias: linha.dias_sem_comprar,
+      status: linha.status,
+      faixaValor: linha.faixa_valor,
+      baixaConfianca: linha.baixa_confianca,
+      motivo: this.motivoFila(linha),
+      mensagemDraft: this.mensagemSugeridaFila(cliente.nome, linha.status)
+    };
+  }
+
+  // Classe de cor do badge de status do motor -- por gravidade (razão do
+  // ciclo): Recompra próxima é a mais leve, Frio a mais grave. Não usa a cor
+  // de destaque (que o usuário escolhe livremente), porque status é um
+  // significado fixo, igual já vale pro verde/vermelho do farol de risco.
+  classeStatus(status: string): string {
+    const mapa: { [key: string]: string } = {
+      'Recompra próxima': 'tx-status--recompra',
+      'Atrasado': 'tx-status--atrasado',
+      'Adormecido': 'tx-status--adormecido',
+      'Frio': 'tx-status--frio'
+    };
+    return mapa[status] || '';
+  }
+
+  private motivoFila(linha: any): string {
+    const base = `Está há ${linha.dias_sem_comprar} dias sem comprar (ciclo esperado: ${linha.ciclo_esperado} dias).`;
+    return linha.baixa_confianca ? `${base} Estimativa com poucos dados ainda.` : base;
+  }
+
+  // Mensagem específica da fila do motor, baseada no status (Atrasado /
+  // Adormecido / Recompra próxima / Frio) -- diferente da mensagemSugerida()
+  // geral do ClientesService (usada na Ficha e nas tabelas), que continua
+  // baseada no farol de risco configurável e não deve mudar.
+  private mensagemSugeridaFila(nome: string, status: string): string {
+    if (status === 'Frio') {
+      return `Olá, ${nome}! Faz bastante tempo que não nos vemos. Temos condições especiais pra você voltar, podemos conversar?`;
+    } else if (status === 'Adormecido') {
+      return `Olá, ${nome}! Tudo bem? Já faz um tempo desde a sua última visita. Podemos te ajudar com alguma coisa?`;
+    } else if (status === 'Recompra próxima') {
+      return `Oi, ${nome}! Passando pra lembrar que já está quase na hora de voltar. Quer agendar?`;
+    }
+    return `Oi, ${nome}! Tudo certo? Estamos à disposição caso precise de algo.`; // Atrasado
+  }
+
+  private carregarAdiadosMotor() {
+    this.http.get<any>(`${API_BASE_URL}/motor/adiados`).subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.toast.mostrar('Erro: ' + dados.erro, '#dc3545'); return; }
+        this.clientesAdiados = (dados.adiados || []).map((item: any) => ({
+          contatoId: item.contato_id,
+          clienteId: item.cliente_id,
+          clienteNome: item.cliente_nome,
+          servicoId: item.servico_id,
+          servicoNome: item.servico_nome,
+          textoRetorno: this.textoRetorno(item.dias_restantes)
+        }));
+        this.refresco.notificar();
+      },
+      error: () => this.toast.mostrar('Falha ao carregar os adiados.', '#dc3545')
+    });
+  }
+
+  private textoRetorno(dias: number): string {
+    if (dias <= 1) return 'Volta amanhã';
+    return `Volta em ${dias} dias`;
+  }
+
+  // Contatar direto quem está adiado, sem precisar trazer de volta pra fila
+  // antes -- assume silêncio igual ao Enviar da fila (mesma regra do
+  // documento) e recalcula a data de reentrada a partir de agora.
+  contatarAdiado(item: any) {
+    const cliente = this.clientesService.clientes.find(c => c.id === item.clienteId);
+    const mensagem = `Oi, ${item.clienteNome}! Tudo bem? Passando pra saber se podemos te ajudar com alguma coisa.`;
+    window.open(this.clientesService.linkWhatsApp(cliente?.telefone || '', mensagem), '_blank');
+
+    const corpo = { cliente_id: item.clienteId, servico_id: item.servicoId, resultado: 'silencio' };
+    this.http.post<any>(`${API_BASE_URL}/motor/contatos`, corpo).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) { this.toast.mostrar('Erro: ' + resposta.erro, '#dc3545'); return; }
+        this.toast.mostrar(`Mensagem aberta pra ${item.clienteNome}.`, '#28a745');
+        this.carregarAdiadosMotor();
+      },
+      error: () => this.toast.mostrar('Falha ao registrar o contato.', '#dc3545')
+    });
+  }
+  // ^ notificar() já acontece via carregarAdiadosMotor() acima.
+
+  // Perfil do cliente pro Painel de Recuperação: o serviço mais urgente dele
+  // (se tiver algum fora do Ativo) + quantos outros também estão em atraso.
+  // null = nenhum serviço fora do Ativo, ou seja, "Em dia".
+  perfilMotorCliente(clienteId: number): { servicoNome: string, status: string, extras: number } | null {
+    const linhas = this.classificacaoPorCliente[clienteId];
+    if (!linhas || linhas.length === 0) return null;
+
+    const ordemGravidade = ['Frio', 'Adormecido', 'Atrasado', 'Recompra próxima'];
+    const principal = [...linhas].sort(
+      (a, b) => ordemGravidade.indexOf(a.status) - ordemGravidade.indexOf(b.status)
+    )[0];
+
+    return { servicoNome: principal.servico_nome, status: principal.status, extras: linhas.length - 1 };
+  }
+
+  carregarClassificacaoMotor() {
+    this.http.get<any>(`${API_BASE_URL}/motor/classificacao`).subscribe({
+      next: (dados) => {
+        if (dados.erro) { this.toast.mostrar('Erro: ' + dados.erro, '#dc3545'); return; }
+        const mapa: { [clienteId: number]: any[] } = {};
+        for (const linha of (dados.linhas || [])) {
+          if (!mapa[linha.cliente_id]) mapa[linha.cliente_id] = [];
+          mapa[linha.cliente_id].push(linha);
+        }
+        this.classificacaoPorCliente = mapa;
+        this.refresco.notificar();
+      },
+      error: () => this.toast.mostrar('Falha ao carregar a classificação do motor.', '#dc3545')
+    });
+  }
+
+  // "Trazer de volta agora" = desfazer o último contato registrado pra essa
+  // linha (documento: "desfazer é obrigatório") -- some a trava de reentrada.
+  trazerDeVoltaAgora(item: any) {
+    this.http.delete<any>(`${API_BASE_URL}/motor/contatos/${item.contatoId}`).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) { this.toast.mostrar('Erro: ' + resposta.erro, '#dc3545'); return; }
+        this.toast.mostrar(`${item.clienteNome} volta a aparecer na fila.`, '#28a745');
+        this.montarFilaDeHoje();
+      },
+      error: () => this.toast.mostrar('Falha ao trazer o cliente de volta.', '#dc3545')
+    });
+  }
+
+  // Mandar a mensagem assume silêncio por padrão -- o documento é explícito:
+  // "o sistema não espera pra concluir que não houve resposta, assume isso
+  // desde o clique". Se a pessoa clicar em Adiar depois, esse registro é
+  // substituído por um mais específico.
+  enviarMensagemFila(item: any) {
+    window.open(this.clientesService.linkWhatsApp(item.cliente.telefone, item.mensagemDraft), '_blank');
+    this.registrarContatoFila(item, 'silencio', `Mensagem enviada. Se ${item.cliente.nome} não responder, ele volta à fila automaticamente.`);
+  }
+
+  adiarContatoFila(item: any) {
+    this.registrarContatoFila(item, 'adiar_sem_data', `${item.cliente.nome} volta à fila mais pra frente.`);
+  }
+
+  // "X" do card: só tira o cliente da fila de HOJE (local, sem registrar
+  // contato nenhum no motor) -- diferente do Adiar, não afeta a reentrada.
+  // Volta a aparecer normalmente na próxima vez que a fila for recalculada.
+  excluirDaFilaLocal(item: any) {
+    this.filaHoje = this.filaHoje.filter(f => !(f.cliente.id === item.cliente.id && f.servicoId === item.servicoId));
+  }
+
+  private registrarContatoFila(item: any, resultado: string, mensagemToast: string) {
+    const corpo = { cliente_id: item.cliente.id, servico_id: item.servicoId, resultado };
+    this.http.post<any>(`${API_BASE_URL}/motor/contatos`, corpo).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) { this.toast.mostrar('Erro: ' + resposta.erro, '#dc3545'); return; }
+
+        this.filaHoje = this.filaHoje.filter(f => !(f.cliente.id === item.cliente.id && f.servicoId === item.servicoId));
+        const texto = resposta.vira_nao_contatar
+          ? `${item.cliente.nome} recusou 3 vezes seguidas e foi marcado como "não contatar".`
+          : mensagemToast;
+        this.toast.mostrar(texto, '#28a745');
+        this.refresco.notificar();
+        this.carregarAdiadosMotor();
+      },
+      error: () => this.toast.mostrar('Falha ao registrar o contato.', '#dc3545')
+    });
+  }
+}

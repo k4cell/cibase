@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "painel-tixa",
+      "name": "painel-cibase",
       "runtimeExecutable": "C:\\PROGRA~1\\nodejs\\npm.cmd",
       "runtimeArgs": ["start", "--prefix", "C:\\Users\\Cassiel\\OneDrive\\READET~1\\PROJET~1\\frontend\\PAINEL~1"],
       "port": 4200,
