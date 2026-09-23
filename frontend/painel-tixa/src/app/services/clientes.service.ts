@@ -219,11 +219,10 @@ export class ClientesService {
     });
   }
 
-  // Identidade da classificação (usada em filtros e na escolha de mensagem) --
-  // separada da cor, porque a cor muda de tema e a identidade não pode mudar junto.
-  // Sistema antigo de "farol de risco" -- ainda usado nos filtros do Painel de
-  // Recuperação e na mensagem padrão do WhatsApp; o motor de recomendação
-  // (services/motor.service.ts) já tem seu próprio status por cliente+serviço.
+  // Identidade da classificação, separada da cor (a cor muda de tema, a
+  // identidade não pode mudar junto). Sistema antigo de "farol de risco" --
+  // o Painel de Recuperação usa o status do motor (services/motor.service.ts)
+  // pra filtro e badge; isto aqui sobrevive só pra escolher a mensagem padrão do WhatsApp.
   classificarRisco(dataUltimaCompra: string, diasAtencao: number, diasRisco: number): 'saudavel' | 'atencao' | 'risco' | '' {
     if (!dataUltimaCompra || dataUltimaCompra === 'Sem vendas') return '';
 

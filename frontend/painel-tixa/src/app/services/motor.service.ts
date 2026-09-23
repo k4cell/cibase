@@ -19,8 +19,6 @@ export class MotorService {
   clientesAdiados: any[] = [];
   contatados: any[] = [];
   contatadosCarregados: boolean = false;
-  clientesPorServico: any[] = [];
-  clientesPorServicoCarregados: boolean = false;
 
   // Classificação "crua" do motor (todo cliente com pelo menos um serviço
   // fora do Ativo, já sem quem está travado por contato), agrupada por
@@ -49,19 +47,6 @@ export class MotorService {
         this.refresco.notificar();
       },
       error: () => this.toast.mostrar('Falha ao montar a fila de hoje.', '#dc3545')
-    });
-  }
-
-  filtrarClientesPorServico(servicoId: string) {
-    this.clientesPorServicoCarregados = true;
-    const filtroServico = servicoId === 'todos' ? '' : `&servico_id=${servicoId}`;
-    this.http.get<any>(`${API_BASE_URL}/motor/fila?tamanho=9999${filtroServico}`).subscribe({
-      next: (dados) => {
-        if (dados.erro) { this.toast.mostrar('Erro: ' + dados.erro, '#dc3545'); return; }
-        this.clientesPorServico = (dados.fila || []).map((linha: any) => this.montarItemFila(linha));
-        this.refresco.notificar();
-      },
-      error: () => this.toast.mostrar('Falha ao carregar os clientes desse serviço.', '#dc3545')
     });
   }
 
@@ -105,7 +90,8 @@ export class MotorService {
       'Recompra próxima': 'tx-status--recompra',
       'Atrasado': 'tx-status--atrasado',
       'Adormecido': 'tx-status--adormecido',
-      'Frio': 'tx-status--frio'
+      'Frio': 'tx-status--frio',
+      'Em dia': 'tx-status--em-dia'
     };
     return mapa[status] || '';
   }

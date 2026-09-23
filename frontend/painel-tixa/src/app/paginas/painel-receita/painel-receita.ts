@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { EstatisticasService } from '../../services/estatisticas.service';
 import { RefrescoService } from '../../services/refresco.service';
 import { formatarValor } from '../../utils/formatacao';
+import { ArrastarRolarDirective } from '../../utils/arrastar-rolar.directive';
 
 @Component({
   selector: 'app-painel-receita',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ArrastarRolarDirective],
   templateUrl: './painel-receita.html'
 })
 export class PainelReceitaComponent implements OnInit, OnDestroy {

@@ -237,7 +237,17 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: default;
 }
+
+/* Na navbar (Shell) a marca é um <button> clicável que leva pro início --
+   no login é só um <div> decorativo, sem sentido virar link ali. */
+button.tx-brand-lockup { cursor: pointer; }
+button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 
 .tx-brand-mark {
   display: flex;
@@ -533,8 +543,10 @@ body {
   width: 15px;
   height: 15px;
   flex-shrink: 0;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
+  /* currentColor em vez de branco fixo -- um spinner branco sumia em botões
+     claros (ex: tx-btn-secondary no tema claro, onde o fundo também é claro). */
+  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
   border-radius: 50%;
   animation: tx-spin 0.7s linear infinite;
 }
@@ -729,6 +741,8 @@ body {
   flex: 1;
   min-width: 0;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
@@ -747,6 +761,7 @@ body {
   color: var(--tx-label);
   background: transparent;
   border: none;
+  cursor: pointer;
   border-radius: var(--tx-r-sm);
   cursor: pointer;
   white-space: nowrap;
@@ -992,6 +1007,13 @@ body {
 
 .tx-toolbar-info { margin: 0; font-size: 13.5px; color: var(--tx-label); }
 
+.tx-toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .tx-subnav {
   display: flex;
   align-items: center;
@@ -1002,7 +1024,14 @@ body {
   border: 1px solid var(--tx-border);
   border-radius: var(--tx-r-full);
   width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
 }
+
+.tx-subnav::-webkit-scrollbar { display: none; }
 
 .tx-subnav-pill {
   padding: 8px 18px;
@@ -1028,6 +1057,8 @@ body {
   border: 1px solid var(--tx-border);
   border-radius: var(--tx-r-md);
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
@@ -1400,7 +1431,15 @@ body {
 
 .tx-table-count { font-size: 13px; color: var(--tx-label); font-variant-numeric: tabular-nums; }
 
-.tx-table-scroll { width: 100%; overflow-x: auto; }
+.tx-table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+
+/* Cursor de "arrastar" em toda faixa com rolagem horizontal por mouse (tabela,
+   navbar, sub-abas, filtros) -- ver utils/arrastar-rolar.directive.ts. */
+.tx-table-scroll, .tx-tabs, .tx-filter-group, .tx-subnav { cursor: grab; }
+.tx-table-scroll.tx-arrastando, .tx-tabs.tx-arrastando, .tx-filter-group.tx-arrastando, .tx-subnav.tx-arrastando {
+  cursor: grabbing;
+  user-select: none;
+}
 
 .tx-table {
   width: 100%;
@@ -1480,6 +1519,8 @@ body {
 .tx-status--em-dia     { background: var(--tx-emerald-soft); color: var(--tx-emerald); border-color: transparent; }
 
 .tx-perfil-motor-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.tx-ficha-status-servicos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .tx-badge-extra { font-size: 11px; color: var(--tx-label); white-space: nowrap; }
 
 /* Fila "Oportunidades de hoje" */
@@ -1547,6 +1588,19 @@ body {
   background: var(--tx-surface-alt);
   border-radius: var(--tx-r-sm);
 }
+
+.tx-fila-recompra-aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--tx-primary-text-soft);
+  background: var(--tx-primary-soft);
+  border-radius: var(--tx-r-sm);
+}
+.tx-fila-recompra-aviso .tx-icon { flex-shrink: 0; width: 15px; height: 15px; }
 
 .tx-fila-textarea {
   width: 100%;

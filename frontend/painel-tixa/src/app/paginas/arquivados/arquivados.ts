@@ -4,11 +4,12 @@ import { RouterLink } from '@angular/router';
 import { ClientesService } from '../../services/clientes.service';
 import { RefrescoService } from '../../services/refresco.service';
 import { formatarValor } from '../../utils/formatacao';
+import { ArrastarRolarDirective } from '../../utils/arrastar-rolar.directive';
 
 @Component({
   selector: 'app-arquivados',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, ArrastarRolarDirective],
   templateUrl: './arquivados.html'
 })
 export class ArquivadosComponent implements OnInit, OnDestroy {

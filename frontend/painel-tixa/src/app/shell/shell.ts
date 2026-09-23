@@ -12,6 +12,7 @@ import { EstatisticasService } from '../services/estatisticas.service';
 import { MotorService } from '../services/motor.service';
 import { RefrescoService } from '../services/refresco.service';
 import { formatarValor, exibirTextoDias } from '../utils/formatacao';
+import { ArrastarRolarDirective } from '../utils/arrastar-rolar.directive';
 
 // Casca autenticada: navbar (marca + navegação + tema/cor + menu do usuário)
 // e os modais que são compartilhados por 2+ páginas (Cadastro/Edição, Ficha,
@@ -20,7 +21,7 @@ import { formatarValor, exibirTextoDias } from '../utils/formatacao';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive, ArrastarRolarDirective],
   templateUrl: './shell.html'
 })
 export class ShellComponent implements OnInit, OnDestroy {
@@ -118,5 +119,13 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   abrirWhatsApp(cliente: any) {
     this.clientesService.abrirWhatsApp(cliente, this.configuracoesService.diasAtencao, this.configuracoesService.diasRisco);
+  }
+
+  // Status do motor por serviço (ver services/motor.service.ts) do cliente
+  // aberto na Ficha -- só os serviços fora do "Em dia" aparecem aqui, os
+  // demais estão implicitamente em dia.
+  statusServicosCliente(clienteId: number | undefined): any[] {
+    if (!clienteId) return [];
+    return this.motorService.classificacaoPorCliente[clienteId] || [];
   }
 }

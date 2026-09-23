@@ -2,16 +2,16 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MotorService } from '../../services/motor.service';
-import { ServicosService } from '../../services/servicos.service';
 import { EstatisticasService } from '../../services/estatisticas.service';
 import { ToastService } from '../../services/toast.service';
 import { RefrescoService } from '../../services/refresco.service';
 import { formatarValor } from '../../utils/formatacao';
+import { ArrastarRolarDirective } from '../../utils/arrastar-rolar.directive';
 
 @Component({
   selector: 'app-hoje',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ArrastarRolarDirective],
   templateUrl: './hoje.html'
 })
 export class HojeComponent implements OnInit, OnDestroy {
@@ -19,16 +19,12 @@ export class HojeComponent implements OnInit, OnDestroy {
   mostrarAdiados: boolean = false;
   itemParaExcluirDaFila: any = null;
 
-  servicoPorServicoId: string = 'todos';
-  filtroStatusPorServico: string = 'Todos';
-
   readonly formatarValor = formatarValor;
 
   private desregistrar!: () => void;
 
   constructor(
     public motorService: MotorService,
-    public servicosService: ServicosService,
     public estatisticasService: EstatisticasService,
     private toast: ToastService,
     private cdr: ChangeDetectorRef,
@@ -54,23 +50,20 @@ export class HojeComponent implements OnInit, OnDestroy {
     if (aba === 'contatados' && !this.motorService.contatadosCarregados) {
       this.motorService.carregarContatados();
     }
-    if (aba === 'servico' && !this.motorService.clientesPorServicoCarregados) {
-      this.filtrarClientesPorServico();
-    }
-  }
-
-  filtrarClientesPorServico() {
-    this.filtroStatusPorServico = 'Todos';
-    this.motorService.filtrarClientesPorServico(this.servicoPorServicoId);
-  }
-
-  clientesPorServicoFiltrados() {
-    if (this.filtroStatusPorServico === 'Todos') return this.motorService.clientesPorServico;
-    return this.motorService.clientesPorServico.filter(item => item.status === this.filtroStatusPorServico);
   }
 
   classeStatus(status: string): string {
     return this.motorService.classeStatus(status);
+  }
+
+  // Outros serviços do MESMO cliente que também estão com recompra próxima --
+  // avisa isso no card pra não precisar contatar de novo em pouco tempo: no
+  // primeiro contato o vendedor já avisa de tudo que está por vir.
+  servicosComRecompraProxima(item: any): string[] {
+    const linhas = this.motorService.classificacaoPorCliente[item.cliente.id] || [];
+    return linhas
+      .filter(l => l.status === 'Recompra próxima' && l.servico_id !== item.servicoId)
+      .map(l => l.servico_nome);
   }
 
   // "X" do card: só tira o cliente da fila de HOJE (local, sem registrar

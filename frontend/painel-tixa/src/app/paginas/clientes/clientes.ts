@@ -8,11 +8,12 @@ import { EstatisticasService } from '../../services/estatisticas.service';
 import { ToastService } from '../../services/toast.service';
 import { RefrescoService } from '../../services/refresco.service';
 import { formatarValor } from '../../utils/formatacao';
+import { ArrastarRolarDirective } from '../../utils/arrastar-rolar.directive';
 
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, ArrastarRolarDirective],
   templateUrl: './clientes.html'
 })
 export class ClientesComponent implements OnInit, OnDestroy {

@@ -2,14 +2,14 @@
 
   <!-- NAVBAR (marca + navegação + utilitários numa barra só, sem uma segunda fileira de abas) -->
   <nav class="tx-navbar">
-    <div class="tx-brand-lockup">
+    <button class="tx-brand-lockup" routerLink="/inicio" title="Ir para o início">
       <div class="tx-brand-mark">
         <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
         </svg>
       </div>
       <span class="tx-brand-name">CIBASE</span>
-    </div>
+    </button>
 
     <nav class="tx-tabs">
       <button class="tx-tab" routerLink="/inicio" routerLinkActive="is-active">
@@ -343,6 +343,12 @@
               <span class="tx-badge" [ngStyle]="{'background-color': classificarOportunidade(clientesService.clienteDetalhe).corFundo, 'color': classificarOportunidade(clientesService.clienteDetalhe).corTexto}">
                 {{ classificarOportunidade(clientesService.clienteDetalhe).texto }}
               </span>
+
+              <div class="tx-ficha-status-servicos" *ngIf="statusServicosCliente(clientesService.clienteDetalhe.id).length > 0">
+                <span class="tx-badge" *ngFor="let linha of statusServicosCliente(clientesService.clienteDetalhe.id)" [ngClass]="motorService.classeStatus(linha.status)">
+                  {{ linha.servico_nome }} · {{ linha.status }}
+                </span>
+              </div>
 
               <dl class="tx-ficha-list">
                 <div class="tx-ficha-row">

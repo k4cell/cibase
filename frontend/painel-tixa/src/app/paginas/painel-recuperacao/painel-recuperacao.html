@@ -53,24 +53,27 @@
     <button class="tx-filter-pill tx-filter-pill--neutral" [class.is-active]="filtroAtual === 'Todos'" (click)="definirFiltro('Todos')">
       Todos
     </button>
-    <button class="tx-filter-pill tx-filter-pill--danger" [class.is-active]="filtroAtual === 'risco'" (click)="definirFiltro('risco')">
-      <span class="tx-dot"></span> Risco Alto
+    <button class="tx-filter-pill tx-filter-pill--success" [class.is-active]="filtroAtual === 'Em dia'" (click)="definirFiltro('Em dia')">
+      <span class="tx-dot"></span> Em dia
     </button>
-    <button class="tx-filter-pill tx-filter-pill--warning" [class.is-active]="filtroAtual === 'atencao'" (click)="definirFiltro('atencao')">
-      <span class="tx-dot"></span> Atenção
+    <button class="tx-filter-pill tx-filter-pill--info" [class.is-active]="filtroAtual === 'Recompra próxima'" (click)="definirFiltro('Recompra próxima')">
+      <span class="tx-dot"></span> Recompra próxima
     </button>
-    <button class="tx-filter-pill tx-filter-pill--success" [class.is-active]="filtroAtual === 'saudavel'" (click)="definirFiltro('saudavel')">
-      <span class="tx-dot"></span> Saudáveis
+    <button class="tx-filter-pill tx-filter-pill--warning" [class.is-active]="filtroAtual === 'Atrasado'" (click)="definirFiltro('Atrasado')">
+      <span class="tx-dot"></span> Atrasado
+    </button>
+    <button class="tx-filter-pill tx-filter-pill--orange" [class.is-active]="filtroAtual === 'Adormecido'" (click)="definirFiltro('Adormecido')">
+      <span class="tx-dot"></span> Adormecido
+    </button>
+    <button class="tx-filter-pill tx-filter-pill--danger" [class.is-active]="filtroAtual === 'Frio'" (click)="definirFiltro('Frio')">
+      <span class="tx-dot"></span> Frio
     </button>
   </div>
 
-  <button class="tx-btn tx-btn-primary" (click)="clientesService.abrirModalCadastro()">
-    <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 12h14"></path>
-      <path d="M12 5v14"></path>
-    </svg>
-    Novo Cliente
-  </button>
+  <select class="tx-period-select" [(ngModel)]="servicoFiltroId">
+    <option value="todos">Todos os serviços</option>
+    <option *ngFor="let servico of servicosService.servicos" [value]="servico.id">{{ servico.nome }}</option>
+  </select>
 </div>
 
 <!-- TABELA DE CLIENTES -->
@@ -86,7 +89,7 @@
         <tr>
           <th>ID</th>
           <th>Cliente</th>
-          <th>Perfil Comercial</th>
+          <th>Status do Serviço</th>
           <th>Contato / WhatsApp</th>
           <th style="text-align: center;">Compras</th>
           <th>Receita</th>
@@ -106,13 +109,12 @@
           </td>
 
           <td>
-            <div class="tx-perfil-motor-cell" *ngIf="perfilMotorCliente(cliente.id) as perfil; else tudoEmDiaBadge">
-              <span class="tx-badge" [ngClass]="classeStatus(perfil.status)">{{ perfil.servicoNome }} · {{ perfil.status }}</span>
-              <span class="tx-badge-extra" *ngIf="perfil.extras > 0">+{{ perfil.extras }} serviço{{ perfil.extras > 1 ? 's' : '' }}</span>
+            <div class="tx-perfil-motor-cell">
+              <span class="tx-badge" [ngClass]="classeStatus(statusServicoCliente(cliente.id).status)">
+                {{ statusServicoCliente(cliente.id).servicoNome ? statusServicoCliente(cliente.id).servicoNome + ' · ' : '' }}{{ statusServicoCliente(cliente.id).status }}
+              </span>
+              <span class="tx-badge-extra" *ngIf="statusServicoCliente(cliente.id).extras > 0">+{{ statusServicoCliente(cliente.id).extras }} serviço{{ statusServicoCliente(cliente.id).extras > 1 ? 's' : '' }}</span>
             </div>
-            <ng-template #tudoEmDiaBadge>
-              <span class="tx-badge tx-status--em-dia">Em dia</span>
-            </ng-template>
           </td>
 
           <td (click)="$event.stopPropagation()">
