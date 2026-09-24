@@ -365,7 +365,7 @@
                 </div>
                 <div class="tx-ficha-row">
                   <dt>Nascimento</dt>
-                  <dd>{{ clientesService.clienteDetalhe.data_nascimento }}</dd>
+                  <dd>{{ formatarData(clientesService.clienteDetalhe.data_nascimento) }}</dd>
                 </div>
                 <div class="tx-ficha-row">
                   <dt>Última compra</dt>
@@ -384,7 +384,7 @@
               <ul *ngIf="!clientesService.carregandoVendasDetalhe && clientesService.vendasClienteDetalhe.length > 0" class="tx-vendas-list">
                 <li *ngFor="let venda of clientesService.vendasClienteDetalhe" class="tx-vendas-item">
                   <span>
-                    {{ venda.data_da_venda }}
+                    {{ formatarData(venda.data_da_venda) }}
                     <span class="tx-vendas-item-servico">{{ venda.servico }}</span>
                   </span>
                   <span class="tx-revenue-cell">R$ {{ formatarValor(venda.valor) }}</span>

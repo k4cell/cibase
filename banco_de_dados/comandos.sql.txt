@@ -47,6 +47,13 @@ CREATE TABLE servicos (
 );
 -- ALTER TABLE vendas ADD COLUMN IF NOT EXISTS servico_id INT REFERENCES servicos(id);
 
+-- Migração (v0.26.0): ciclo do serviço em dias OU meses. dias_ciclo continua
+-- sendo a única fonte de verdade pro motor (sempre em dias -- o frontend
+-- converte meses * 30 antes de enviar); unidade_ciclo ('dias' | 'meses') só
+-- serve pra reexibir o número do jeito que foi digitado (mecânica pensa em
+-- meses, manicure pensa em dias).
+-- ALTER TABLE servicos ADD COLUMN IF NOT EXISTS unidade_ciclo VARCHAR(10) DEFAULT 'dias';
+
 -- Migração (Fase 2 do motor): travas manuais "não contatar" e "problema
 -- aberto" (documento "motor-de-recomendacao.pdf", seção 3 -- travas -- e
 -- seção 6 -- persistência). São por CLIENTE (não por linha cliente+serviço):

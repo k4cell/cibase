@@ -11,7 +11,7 @@ from routers import clientes, configuracoes, importacao, motor, servicos, vendas
 # abaixo, que serviços de monitoramento (Render) conseguem checar sem token.
 app = FastAPI(
     title="Motor Backend - CiBase",
-    version="0.25.0"
+    version="0.26.0"
 )
 
 app.add_middleware(

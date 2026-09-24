@@ -15,11 +15,11 @@ def listar_servicos():
     try:
         conexao = conectar_banco()
         cursor = conexao.cursor()
-        cursor.execute("SELECT id, nome, dias_ciclo FROM servicos ORDER BY nome;")
+        cursor.execute("SELECT id, nome, dias_ciclo, unidade_ciclo FROM servicos ORDER BY nome;")
         linhas = cursor.fetchall()
         cursor.close()
         conexao.close()
-        return {"servicos": [{"id": l[0], "nome": l[1], "dias_ciclo": l[2]} for l in linhas]}
+        return {"servicos": [{"id": l[0], "nome": l[1], "dias_ciclo": l[2], "unidade_ciclo": l[3] or "dias"} for l in linhas]}
     except Exception as erro:
         return {"erro": f"Erro ao buscar serviços: {erro}"}
 
@@ -35,8 +35,8 @@ def criar_servico(servico: NovoServico):
         conexao = conectar_banco()
         cursor = conexao.cursor()
         cursor.execute(
-            "INSERT INTO servicos (nome, dias_ciclo) VALUES (%s, %s) RETURNING id;",
-            (nome, servico.dias_ciclo)
+            "INSERT INTO servicos (nome, dias_ciclo, unidade_ciclo) VALUES (%s, %s, %s) RETURNING id;",
+            (nome, servico.dias_ciclo, servico.unidade_ciclo)
         )
         novo_id = cursor.fetchone()[0]
         conexao.commit()
@@ -60,8 +60,8 @@ def atualizar_servico(servico_id: int, servico: NovoServico):
         conexao = conectar_banco()
         cursor = conexao.cursor()
         cursor.execute(
-            "UPDATE servicos SET nome = %s, dias_ciclo = %s WHERE id = %s;",
-            (nome, servico.dias_ciclo, servico_id)
+            "UPDATE servicos SET nome = %s, dias_ciclo = %s, unidade_ciclo = %s WHERE id = %s;",
+            (nome, servico.dias_ciclo, servico.unidade_ciclo, servico_id)
         )
         linhas_afetadas = cursor.rowcount
         conexao.commit()

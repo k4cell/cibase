@@ -19,9 +19,16 @@ class NovoServico(BaseModel):
     """ Catálogo de serviços da empresa -- dias_ciclo é o nível 1 do fallback
     de ciclo esperado do motor de recomendação (a regra que a própria empresa
     configura pra aquele serviço, antes de cair pro ciclo do cliente/base).
-    Obrigatório: todo serviço precisa de um ciclo esperado definido. """
+    Obrigatório: todo serviço precisa de um ciclo esperado definido.
+
+    unidade_ciclo é só pra exibição -- o frontend já manda dias_ciclo
+    convertido pra dias (meses * 30) antes de chegar aqui, então o motor de
+    recomendação nunca precisa saber a unidade original, só o backend guarda
+    ela pra reexibir o número do jeito que foi digitado (mecânica pensa em
+    meses, manicure pensa em dias). """
     nome: str
     dias_ciclo: int
+    unidade_ciclo: str = "dias"
 
 
 class ConfiguracoesAtualizacao(BaseModel):

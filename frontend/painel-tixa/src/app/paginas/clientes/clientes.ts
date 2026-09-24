@@ -7,7 +7,7 @@ import { VendasService } from '../../services/vendas.service';
 import { EstatisticasService } from '../../services/estatisticas.service';
 import { ToastService } from '../../services/toast.service';
 import { RefrescoService } from '../../services/refresco.service';
-import { formatarValor } from '../../utils/formatacao';
+import { formatarValor, formatarData } from '../../utils/formatacao';
 import { ArrastarRolarDirective } from '../../utils/arrastar-rolar.directive';
 
 @Component({
@@ -21,6 +21,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
   importandoVendas: boolean = false;
 
   readonly formatarValor = formatarValor;
+  readonly formatarData = formatarData;
 
   private desregistrar!: () => void;
 

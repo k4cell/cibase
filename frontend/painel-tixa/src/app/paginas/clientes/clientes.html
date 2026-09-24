@@ -78,7 +78,7 @@
 
           <td class="tx-cell-muted">{{ cliente.email }}</td>
           <td class="tx-cell-muted">{{ cliente.cpf }}</td>
-          <td class="tx-cell-muted">{{ cliente.data_nascimento }}</td>
+          <td class="tx-cell-muted">{{ formatarData(cliente.data_nascimento) }}</td>
 
           <td (click)="$event.stopPropagation()">
             <div class="tx-phone-cell">

@@ -19,8 +19,14 @@
       <input id="tx-novo-servico-nome" type="text" class="tx-input" [(ngModel)]="novoServicoNome" placeholder="Ex: Revisão">
     </div>
     <div class="tx-field">
-      <label class="tx-field-label" for="tx-novo-servico-ciclo">Ciclo esperado em dias</label>
-      <input id="tx-novo-servico-ciclo" type="number" class="tx-input" min="1" [(ngModel)]="novoServicoCiclo" placeholder="Ex: 180">
+      <label class="tx-field-label" for="tx-novo-servico-ciclo">Ciclo esperado</label>
+      <div class="tx-ciclo-input-group">
+        <input id="tx-novo-servico-ciclo" type="number" class="tx-input" min="1" [(ngModel)]="novoServicoCiclo" placeholder="Ex: 6">
+        <select class="tx-period-select" [(ngModel)]="novoServicoUnidade">
+          <option value="dias">Dias</option>
+          <option value="meses">Meses</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -37,7 +43,7 @@
     <ng-container *ngIf="servicoEditandoId !== servico.id; else modoEdicaoServico">
       <div class="tx-servico-card-nome">{{ servico.nome }}</div>
       <div class="tx-servico-card-ciclo">
-        {{ servico.dias_ciclo ? servico.dias_ciclo + ' dias de ciclo esperado' : 'Ciclo ainda não definido' }}
+        {{ exibirCiclo(servico) }}
       </div>
       <div class="tx-servico-card-acoes">
         <button class="tx-servico-item-editar" (click)="iniciarEdicaoServico(servico)" title="Editar serviço">
@@ -62,8 +68,14 @@
           <input type="text" class="tx-input" [(ngModel)]="servicoEditandoNome">
         </div>
         <div class="tx-field">
-          <label class="tx-field-label">Ciclo esperado em dias</label>
-          <input type="number" class="tx-input" min="1" [(ngModel)]="servicoEditandoCiclo">
+          <label class="tx-field-label">Ciclo esperado</label>
+          <div class="tx-ciclo-input-group">
+            <input type="number" class="tx-input" min="1" [(ngModel)]="servicoEditandoCiclo">
+            <select class="tx-period-select" [(ngModel)]="servicoEditandoUnidade">
+              <option value="dias">Dias</option>
+              <option value="meses">Meses</option>
+            </select>
+          </div>
         </div>
         <div class="tx-servico-edicao-acoes">
           <button class="tx-btn tx-btn-secondary" (click)="cancelarEdicaoServico()">Cancelar</button>

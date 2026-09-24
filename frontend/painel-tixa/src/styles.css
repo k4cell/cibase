@@ -955,16 +955,21 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
    ------------------------------------------------------------------------------ */
 .tx-home-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  /* 340px fecha em exatamente 3 colunas na largura máxima do .tx-main (1384px
+     úteis) -- com 240px cabiam 5, e como são 6 cards a última linha sobrava
+     com 1 card e 4 buracos vazios (colunas usadas na linha 1 não colapsam
+     só por ficarem sem conteúdo na linha 2). 3 divide 6 igual em qualquer
+     largura (3, depois 2, depois 1 no mobile), nunca sobra buraco. */
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 20px;
 }
 
 .tx-home-card {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  padding: 22px;
+  gap: 6px;
+  padding: 28px;
   background: var(--tx-surface);
   border: 1px solid var(--tx-border);
   border-radius: var(--tx-r-lg);
@@ -987,20 +992,20 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  margin-bottom: 8px;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 10px;
   border-radius: var(--tx-r-md);
   background: var(--tx-primary-soft);
   border: 1px solid var(--tx-primary-border);
   color: var(--tx-primary);
 }
 
-.tx-home-card-icon .tx-icon { width: 20px; height: 20px; }
+.tx-home-card-icon .tx-icon { width: 26px; height: 26px; }
 
 .tx-home-card-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.015em;
   color: var(--tx-title);
@@ -1008,14 +1013,14 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 
 .tx-home-card-desc {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--tx-label);
 }
 
 .tx-home-card-stat {
-  margin-top: 10px;
-  font-size: 12.5px;
+  margin-top: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--tx-primary);
 }
@@ -1887,6 +1892,10 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 }
 
 .tx-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.tx-ciclo-input-group { display: flex; gap: 8px; }
+.tx-ciclo-input-group .tx-input { flex: 1; min-width: 0; }
+.tx-ciclo-input-group .tx-period-select { flex-shrink: 0; }
 
 .tx-modal-footer {
   display: flex;

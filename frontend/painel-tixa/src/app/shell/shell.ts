@@ -11,7 +11,7 @@ import { ConfiguracoesService } from '../services/configuracoes.service';
 import { EstatisticasService } from '../services/estatisticas.service';
 import { MotorService } from '../services/motor.service';
 import { RefrescoService } from '../services/refresco.service';
-import { formatarValor, exibirTextoDias } from '../utils/formatacao';
+import { formatarValor, formatarData, exibirTextoDias } from '../utils/formatacao';
 import { ArrastarRolarDirective } from '../utils/arrastar-rolar.directive';
 
 // Casca autenticada: navbar (marca + navegação + tema/cor + menu do usuário)
@@ -29,6 +29,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   mostrarMenuUsuario: boolean = false;
 
   readonly formatarValor = formatarValor;
+  readonly formatarData = formatarData;
   readonly exibirTextoDias = exibirTextoDias;
 
   private desregistrar!: () => void;

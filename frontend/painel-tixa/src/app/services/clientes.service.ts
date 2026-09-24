@@ -192,12 +192,14 @@ export class ClientesService {
         const inseridos = resposta.clientes_inseridos;
         const duplicados = resposta.clientes_ignorados_por_duplicidade;
         const incompletos = resposta.clientes_ignorados_por_dados_incompletos || 0;
+        const nomesDuplicados = resposta.clientes_ignorados_por_nome_duplicado || 0;
         const vendasInseridas = resposta.vendas_inseridas || 0;
         const vendasSemCliente = resposta.vendas_ignoradas_sem_cliente_correspondente || 0;
 
         const partes: string[] = [];
         if (inseridos > 0) partes.push(inseridos === 1 ? '1 cliente novo cadastrado' : `${inseridos} clientes novos cadastrados`);
         if (duplicados > 0) partes.push(duplicados === 1 ? '1 já estava cadastrado (CPF repetido)' : `${duplicados} já estavam cadastrados (CPF repetido)`);
+        if (nomesDuplicados > 0) partes.push(nomesDuplicados === 1 ? '1 ignorado (já existe um cliente com esse nome)' : `${nomesDuplicados} ignorados (já existe um cliente com esse nome)`);
         if (incompletos > 0) partes.push(incompletos === 1 ? '1 linha ignorada por dados incompletos' : `${incompletos} linhas ignoradas por dados incompletos`);
         if (vendasInseridas > 0) partes.push(vendasInseridas === 1 ? '1 venda importada' : `${vendasInseridas} vendas importadas`);
         if (vendasSemCliente > 0) partes.push(vendasSemCliente === 1 ? '1 venda ignorada (CPF não encontrado)' : `${vendasSemCliente} vendas ignoradas (CPF não encontrado)`);

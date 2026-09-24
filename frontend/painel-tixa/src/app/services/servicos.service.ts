@@ -17,8 +17,8 @@ export class ServicosService {
     });
   }
 
-  adicionarServico(nome: string, diasCiclo: number, aoSalvar: () => void, aoFinalizar: () => void) {
-    this.http.post<any>(`${API_BASE_URL}/servicos`, { nome, dias_ciclo: diasCiclo }).subscribe({
+  adicionarServico(nome: string, diasCiclo: number, unidadeCiclo: string, aoSalvar: () => void, aoFinalizar: () => void) {
+    this.http.post<any>(`${API_BASE_URL}/servicos`, { nome, dias_ciclo: diasCiclo, unidade_ciclo: unidadeCiclo }).subscribe({
       next: (resposta) => {
         aoFinalizar();
         if (resposta.erro) {
@@ -37,8 +37,8 @@ export class ServicosService {
     });
   }
 
-  salvarEdicaoServico(id: number, nome: string, diasCiclo: number, aoSalvar: () => void, aoFinalizar: () => void) {
-    this.http.put<any>(`${API_BASE_URL}/servicos/${id}`, { nome, dias_ciclo: diasCiclo }).subscribe({
+  salvarEdicaoServico(id: number, nome: string, diasCiclo: number, unidadeCiclo: string, aoSalvar: () => void, aoFinalizar: () => void) {
+    this.http.put<any>(`${API_BASE_URL}/servicos/${id}`, { nome, dias_ciclo: diasCiclo, unidade_ciclo: unidadeCiclo }).subscribe({
       next: (resposta) => {
         aoFinalizar();
         if (resposta.erro) {

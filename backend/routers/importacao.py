@@ -1,5 +1,6 @@
 import csv
 import io
+import re
 import unicodedata
 
 import openpyxl
@@ -13,17 +14,27 @@ router = APIRouter(dependencies=[Depends(verificar_token)])
 # Cada campo é reconhecido por QUALQUER cabeçalho que CONTENHA uma das palavras-chave
 # (não precisa bater a frase inteira) -- assim "Nome do Cliente", "Nome Completo" e "nome"
 # caem todos em "nome" sem precisar cadastrar cada variação manualmente.
-# A ordem importa: regras mais específicas (ex: "data da venda") vêm antes das genéricas.
+#
+# A ordem importa MUITO: campos de negócio específicos (serviço, valor, data)
+# vêm antes de "nome"/"cliente" de propósito -- "nome" é a palavra mais
+# genérica de todas e apareceria dentro de cabeçalhos de outros campos
+# também (ex: "Nome do Produto", "Nome do Serviço"). Se "nome" fosse checado
+# primeiro, essas colunas cairiam erradas em vez de caírem em "servico".
 REGRAS_CABECALHO = [
     (("data da venda", "dia da venda", "data venda", "dia venda", "data_da_venda",
       "data da compra", "dia da compra", "data compra", "dia compra"), "data_da_venda"),
-    (("nascimento",), "data_nascimento"),
+    (("nascimento", "aniversario"), "data_nascimento"),
+    (("servico", "produto", "item"), "servico"),
+    (("valor", "receita", "preco"), "valor"),
+    # Fallback pra planilha que só chama a coluna de "Data" (sem "da venda"/"da
+    # compra") -- vem DEPOIS de "nascimento" de propósito, senão "Data de
+    # Nascimento" cairia aqui em vez de virar data_nascimento.
+    (("data",), "data_da_venda"),
     (("e-mail", "e mail", "email"), "email"),
-    (("cpf",), "cpf"),
-    (("telefone", "celular", "whatsapp", "fone"), "telefone"),
-    (("nome",), "nome"),
-    (("servico", "produto"), "servico"),
-    (("valor", "receita"), "valor"),
+    (("cpf", "documento"), "cpf"),
+    (("telefone", "celular", "whatsapp", "fone", "tel", "contato"), "telefone"),
+    # "nome"/"cliente" por ÚLTIMO -- ver nota acima.
+    (("nome", "cliente"), "nome"),
 ]
 
 def _mapear_cabecalho(texto: str) -> str:
@@ -46,13 +57,43 @@ def _texto_de_celula(valor):
         return str(int(valor))
     return str(valor).strip()
 
+def _normalizar_cpf(cpf: str) -> str:
+    """ Reduz o CPF a só dígitos e aplica a máscara padrão (000.000.000-00) --
+    sem isso, uma planilha com CPF sem pontuação (ou com pontuação diferente)
+    nunca bate com um cliente que já tem o CPF formatado desse outro jeito,
+    tanto pra detectar duplicata no cadastro quanto pra casar venda com
+    cliente pelo CPF. Só aplica a máscara com exatamente 11 dígitos --
+    CPF incompleto/inválido devolve só os dígitos, sem forçar um formato
+    que não faz sentido pro tamanho encontrado (a linha vira "inválida" mais
+    adiante, não trava aqui). """
+    digitos = re.sub(r"\D", "", cpf or "")
+    if len(digitos) == 11:
+        return f"{digitos[0:3]}.{digitos[3:6]}.{digitos[6:9]}-{digitos[9:11]}"
+    return digitos
+
 def _data_de_celula(valor):
     """ Normaliza uma data vinda de CSV (string) ou Excel (datetime/date) para 'YYYY-MM-DD'. """
     if valor is None:
         return None
     if hasattr(valor, "strftime"):
         return valor.strftime("%Y-%m-%d")
+
     texto = str(valor).strip()
+    if not texto:
+        return None
+
+    # Já em ISO (aaaa-mm-dd[Thh:mm:ss]) -- comum em CSV exportado por outro
+    # sistema, em vez de digitado à mão numa planilha.
+    if re.match(r"^\d{4}-\d{2}-\d{2}", texto):
+        return texto[:10]
+
+    # dd/mm/aaaa ou dd-mm-aaaa -- formato de data mais comum no Brasil, tanto
+    # em planilha digitada à mão quanto em CSV exportado do Excel em pt-BR.
+    partida = re.match(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$", texto)
+    if partida:
+        dia, mes, ano = partida.groups()
+        return f"{ano}-{mes.zfill(2)}-{dia.zfill(2)}"
+
     return texto or None
 
 def _valor_de_celula(valor):
@@ -61,17 +102,43 @@ def _valor_de_celula(valor):
         return None
     if isinstance(valor, (int, float)):
         return float(valor)
+
     texto = str(valor).strip().replace("R$", "").replace(" ", "")
     if not texto:
         return None
+
+    # Formato brasileiro usa ponto como separador de milhar e vírgula como
+    # decimal (ex: "1.234,56") -- sem tratar isso à parte, sobrava "1.234.56"
+    # (dois pontos) pro float() e a linha inteira era descartada como "inválida".
+    if "," in texto:
+        texto = texto.replace(".", "").replace(",", ".")
+
     try:
-        return float(texto.replace(",", "."))
+        return float(texto)
     except ValueError:
         return None
 
+def _decodificar_csv(conteudo: bytes) -> str:
+    """ Excel no Brasil costuma salvar CSV em cp1252 (Windows-1252), não UTF-8
+    -- tenta UTF-8 primeiro (mais comum em exportação de outros sistemas) e
+    cai pra cp1252 se der erro de decodificação, em vez de quebrar a
+    importação inteira ou virar texto ilegível. """
+    try:
+        return conteudo.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return conteudo.decode("cp1252")
+
+def _detectar_delimitador(texto: str) -> str:
+    """ Excel no Brasil salva CSV com ; em vez de , (porque a vírgula já é o
+    separador decimal do português) -- decide pelo que aparece mais vezes na
+    linha de cabeçalho, em vez de assumir vírgula sempre. """
+    primeira_linha = texto.split("\n", 1)[0]
+    return ";" if primeira_linha.count(";") > primeira_linha.count(",") else ","
+
 def _ler_linhas_csv(conteudo: bytes):
-    texto = conteudo.decode("utf-8-sig")  # utf-8-sig evita erro com caracteres acentuados do Excel
-    leitor = csv.DictReader(io.StringIO(texto))
+    texto = _decodificar_csv(conteudo)
+    delimitador = _detectar_delimitador(texto)
+    leitor = csv.DictReader(io.StringIO(texto), delimiter=delimitador)
     for linha in leitor:
         yield {_mapear_cabecalho(chave): valor for chave, valor in linha.items()}
 
@@ -113,7 +180,7 @@ def _detectar_abas(conteudo: bytes):
         colunas = {c for c in linhas[0].keys() if c} if linhas else set()
         colunas_por_aba[nome] = colunas
 
-        if aba_clientes is None and {"nome", "telefone", "cpf"}.issubset(colunas):
+        if aba_clientes is None and {"nome", "cpf"}.issubset(colunas):
             aba_clientes = nome
         if aba_vendas is None and {"cpf", "valor", "data_da_venda"}.issubset(colunas):
             aba_vendas = nome
@@ -156,7 +223,7 @@ def _processar_linhas_vendas(linhas, cursor):
     cache_servicos: dict = {}
 
     for linha in linhas:
-        cpf = _texto_de_celula(linha.get("cpf"))
+        cpf = _normalizar_cpf(_texto_de_celula(linha.get("cpf")))
         valor = _valor_de_celula(linha.get("valor"))
         data_venda = _data_de_celula(linha.get("data_da_venda"))
 
@@ -184,7 +251,8 @@ def _processar_linhas_vendas(linhas, cursor):
 async def importar_clientes(arquivo: UploadFile = File(...)):
     """
     Lê uma planilha de clientes (.csv ou .xlsx) e insere no banco em lote.
-    Colunas obrigatórias: nome, telefone, cpf (email e data_nascimento são opcionais).
+    Colunas obrigatórias: nome, cpf (telefone, email e data_nascimento são opcionais --
+    telefone ausente vira "Não informado", mesma convenção já usada pros outros três).
 
     Se o arquivo for .xlsx e tiver uma segunda aba (de preferência chamada "Vendas"),
     ela também é importada como histórico de vendas, casando cada linha por CPF.
@@ -215,7 +283,7 @@ async def importar_clientes(arquivo: UploadFile = File(...)):
             if not linhas:
                 return {"erro": "A planilha está vazia."}
             colunas_disponiveis = {c for c in linhas[0].keys() if c}
-            colunas_faltando = {"nome", "telefone", "cpf"} - colunas_disponiveis
+            colunas_faltando = {"nome", "cpf"} - colunas_disponiveis
             if colunas_faltando:
                 return {"erro": (
                     f"A planilha não tem a(s) coluna(s) obrigatória(s): {', '.join(sorted(colunas_faltando))}. "
@@ -228,36 +296,54 @@ async def importar_clientes(arquivo: UploadFile = File(...)):
         inseridos = 0
         duplicados = 0
         incompletos = 0
+        nomes_duplicados = 0
 
         for linha in linhas:
             nome = _texto_de_celula(linha.get("nome"))
-            telefone = _texto_de_celula(linha.get("telefone"))
-            cpf = _texto_de_celula(linha.get("cpf"))
+            # Telefone é importante pro resto do sistema (é como o WhatsApp é
+            # aberto), mas não trava a importação -- vira "Não informado" na
+            # ausência, igual já acontece com CPF/e-mail/nascimento na leitura.
+            telefone = _texto_de_celula(linha.get("telefone")) or "Não informado"
+            cpf = _normalizar_cpf(_texto_de_celula(linha.get("cpf")))
             email = _texto_de_celula(linha.get("email"))
             data_nasc = _data_de_celula(linha.get("data_nascimento"))
 
-            if not nome or not telefone or not cpf:
+            if not nome or not cpf:
                 incompletos += 1
                 continue
 
-            # Verifica duplicidade de CPF antes de gravar
+            # CPF é o identificador de verdade (documento único por pessoa) --
+            # nome NÃO é (duas pessoas reais diferentes podem se chamar
+            # "Carlos Souza"), então dedup por CPF é o certo aqui.
             cursor.execute("SELECT id FROM clientes WHERE cpf = %s;", (cpf,))
             if cursor.fetchone():
                 duplicados += 1
                 continue
 
-            comando_sql = """
-                INSERT INTO clientes (nome, telefone, cpf, email, data_nascimento)
-                VALUES (%s, %s, %s, %s, %s);
-            """
-            cursor.execute(comando_sql, (nome, telefone, cpf, email, data_nasc))
-            inseridos += 1
+            # A tabela também tem um índice único em LOWER(nome)
+            # (idx_clientes_nome_unico) -- uma segunda pessoa com o mesmo
+            # nome (CPF diferente) esbarra nele na hora do INSERT. Usa
+            # SAVEPOINT pra essa linha específica virar "duplicado" sem
+            # invalidar a transação inteira e perder o resto do lote.
+            cursor.execute("SAVEPOINT antes_insercao_cliente;")
+            try:
+                comando_sql = """
+                    INSERT INTO clientes (nome, telefone, cpf, email, data_nascimento)
+                    VALUES (%s, %s, %s, %s, %s);
+                """
+                cursor.execute(comando_sql, (nome, telefone, cpf, email, data_nasc))
+                cursor.execute("RELEASE SAVEPOINT antes_insercao_cliente;")
+                inseridos += 1
+            except Exception:
+                cursor.execute("ROLLBACK TO SAVEPOINT antes_insercao_cliente;")
+                nomes_duplicados += 1
 
         resposta = {
             "mensagem": "Processamento concluído com sucesso!",
             "clientes_inseridos": inseridos,
             "clientes_ignorados_por_duplicidade": duplicados,
-            "clientes_ignorados_por_dados_incompletos": incompletos
+            "clientes_ignorados_por_dados_incompletos": incompletos,
+            "clientes_ignorados_por_nome_duplicado": nomes_duplicados
         }
 
         if nome_aba_vendas:
