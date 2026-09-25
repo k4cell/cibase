@@ -37,6 +37,7 @@ const TEMAS: Record<Tema, any> = {
     warningInk: '#fbbf24', warningInkForte: '#fcd34d',
     orangeInk: '#fdba74',
     successInk: '#34d399', successInkForte: '#6ee7b7',
+    infoSoft: '#1e3a5f', infoInk: '#93c5fd', infoInkForte: '#bfdbfe',
     oportunidade: {
       novoLead:         { fundo: '#0c3a5f', texto: '#93c5fd' },
       valiosoEmRisco:   { fundo: '#450a0a', texto: '#fca5a5' },
@@ -62,6 +63,7 @@ const TEMAS: Record<Tema, any> = {
     warningInk: '#b45309', warningInkForte: '#92400e',
     orangeInk: '#c2410c',
     successInk: '#059669', successInkForte: '#047857',
+    infoSoft: '#dbeafe', infoInk: '#1d4ed8', infoInkForte: '#1e40af',
     oportunidade: {
       novoLead:         { fundo: '#eff6ff', texto: '#1d4ed8' },
       valiosoEmRisco:   { fundo: '#fee2e2', texto: '#991b1b' },
@@ -159,6 +161,9 @@ export class TemaService {
     estilo.setProperty('--tx-orange-ink', t.orangeInk);
     estilo.setProperty('--tx-success-ink', t.successInk);
     estilo.setProperty('--tx-success-ink-forte', t.successInkForte);
+    estilo.setProperty('--tx-info-soft', t.infoSoft);
+    estilo.setProperty('--tx-info-ink', t.infoInk);
+    estilo.setProperty('--tx-info-ink-forte', t.infoInkForte);
 
     // soft/textSoft da cor de destaque dependem do tema -- reaplica.
     const paleta = this.PALETAS_COR.find(p => p.nome === this.corSelecionada);

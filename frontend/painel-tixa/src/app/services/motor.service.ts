@@ -161,12 +161,19 @@ export class MotorService {
       next: (resposta) => {
         if (resposta.erro) { this.toast.mostrar('Erro: ' + resposta.erro, '#dc3545'); return; }
         this.toast.mostrar(`Mensagem aberta pra ${item.clienteNome}.`, '#28a745');
-        this.carregarAdiadosMotor();
+
+        // Já foi contatado: sai dos Adiados na hora, entra em Contatados e não
+        // pode sobrar um card dele na fila de hoje (que foi montada antes).
+        this.clientesAdiados = this.clientesAdiados.filter(a => !(a.clienteId === item.clienteId && a.servicoId === item.servicoId));
+        this.filaHoje = this.filaHoje.filter(f => f.cliente.id !== item.clienteId);
+        this.refresco.notificar();
+
+        this.montarFilaDeHoje();
+        if (this.contatadosCarregados) this.carregarContatados();
       },
       error: () => this.toast.mostrar('Falha ao registrar o contato.', '#dc3545')
     });
   }
-  // ^ notificar() já acontece via carregarAdiadosMotor() acima.
 
   // Cliente já comprou pelo menos um serviço (tem alguma linha de situação).
   temHistoricoDeCompra(clienteId: number): boolean {
@@ -252,6 +259,7 @@ export class MotorService {
         this.toast.mostrar(texto, '#28a745');
         this.refresco.notificar();
         this.carregarAdiadosMotor();
+        if (this.contatadosCarregados) this.carregarContatados();
       },
       error: () => this.toast.mostrar('Falha ao registrar o contato.', '#dc3545')
     });

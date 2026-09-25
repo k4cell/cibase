@@ -92,8 +92,15 @@ def obter_fila(modo: str = "recuperacao", tamanho: int = 10, servico_id: int | N
 
 @router.get("/motor/adiados")
 def obter_adiados():
-    """ Linhas (cliente+serviço) aguardando reentrada -- a data de reentrada
-    mais recente ainda não chegou. Alimenta a seção "Adiados" da aba Hoje. """
+    """ Linhas (cliente+serviço) que a pessoa pediu pra adiar (ou recusou) e
+    cuja data de reentrada mais recente ainda não chegou. Alimenta a seção
+    "Adiados" da aba Hoje.
+
+    Linha cujo último contato foi uma mensagem enviada ('silencio' -- o
+    "Enviar" da fila e o "Contatar" dos próprios adiados) NÃO é adiada: ela já
+    foi contatada e aparece em "Contatados". O prazo de reentrada de 1/4 do
+    ciclo continua valendo pra fila (travas), mas listá-la aqui também fazia o
+    mesmo cliente aparecer em Adiados e em Contatados ao mesmo tempo. """
     try:
         conexao = conectar_banco()
         cursor = conexao.cursor()
@@ -101,7 +108,7 @@ def obter_adiados():
 
         cursor.execute("""
             SELECT DISTINCT ON (c.cliente_id, c.servico_id)
-                c.id, c.cliente_id, c.servico_id, c.data_reentrada, cl.nome, s.nome
+                c.id, c.cliente_id, c.servico_id, c.data_reentrada, cl.nome, s.nome, c.resultado
             FROM contatos c
             JOIN clientes cl ON cl.id = c.cliente_id
             JOIN servicos s ON s.id = c.servico_id
@@ -110,7 +117,9 @@ def obter_adiados():
         """)
 
         adiados = []
-        for contato_id, cliente_id, servico_id, data_reentrada, cliente_nome, servico_nome in cursor.fetchall():
+        for contato_id, cliente_id, servico_id, data_reentrada, cliente_nome, servico_nome, resultado in cursor.fetchall():
+            if resultado == "silencio":
+                continue  # já contatado: vive em "Contatados", não em "Adiados"
             if data_reentrada and data_reentrada > hoje:
                 adiados.append({
                     "contato_id": contato_id,

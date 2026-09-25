@@ -40,6 +40,52 @@
           Receita recuperada consolidada em tempo real
         </li>
       </ul>
+
+      <!-- Prévia ilustrativa do painel (dados fictícios, só decorativa) -->
+      <div class="tx-login-preview" aria-hidden="true">
+        <div class="tx-login-preview-head">
+          <span class="tx-login-preview-title">Fila de hoje</span>
+          <span class="tx-login-preview-count">3 oportunidades</span>
+        </div>
+
+        <div class="tx-login-preview-row">
+          <span class="tx-login-preview-avatar">M</span>
+          <div class="tx-login-preview-info">
+            <strong>Mariana Souza</strong>
+            <small>Revisão completa · há 214 dias</small>
+          </div>
+          <span class="tx-login-preview-badge tx-login-preview-badge--frio">Frio</span>
+        </div>
+
+        <div class="tx-login-preview-row">
+          <span class="tx-login-preview-avatar">R</span>
+          <div class="tx-login-preview-info">
+            <strong>Rafael Almeida</strong>
+            <small>Troca de óleo · há 96 dias</small>
+          </div>
+          <span class="tx-login-preview-badge tx-login-preview-badge--atrasado">Atrasado</span>
+        </div>
+
+        <div class="tx-login-preview-row">
+          <span class="tx-login-preview-avatar">C</span>
+          <div class="tx-login-preview-info">
+            <strong>Camila Ferreira</strong>
+            <small>Alinhamento · há 158 dias</small>
+          </div>
+          <span class="tx-login-preview-badge tx-login-preview-badge--recompra">Recompra próxima</span>
+        </div>
+
+        <div class="tx-login-preview-foot">
+          <div>
+            <small>Recuperado no mês</small>
+            <strong>R$ 12.480,00</strong>
+          </div>
+          <div>
+            <small>Clientes reativados</small>
+            <strong>18</strong>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="tx-login-aside-foot">
@@ -115,7 +161,9 @@
         <div class="tx-field">
           <div class="tx-login-label-row">
             <label class="tx-field-label" for="tx-login-senha">Senha</label>
-            <a class="tx-login-link" (click)="esqueciSenha()">Esqueceu a senha?</a>
+            <button type="button" class="tx-login-link" (click)="esqueciSenha()" [disabled]="enviandoRedefinicao">
+              {{ enviandoRedefinicao ? 'Enviando...' : 'Esqueceu a senha?' }}
+            </button>
           </div>
           <div class="tx-input-wrap">
             <svg class="tx-input-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -144,16 +192,12 @@
         {{ carregandoLogin ? 'Conectando...' : 'Entrar no Sistema' }}
       </button>
 
-      <p class="tx-login-criar-conta">
-        Não tem uma conta? <a class="tx-login-link" (click)="criarConta()">Criar conta</a>
-      </p>
-
       <p class="tx-login-footnote">
         <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="3" y="11" width="18" height="11" rx="2"></rect>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
         </svg>
-        Acesso restrito ao administrador da conta.
+        Acesso restrito a usuários autorizados.
       </p>
     </div>
   </div>

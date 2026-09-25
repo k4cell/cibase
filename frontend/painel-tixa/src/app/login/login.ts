@@ -18,6 +18,7 @@ export class LoginComponent {
   carregandoLogin: boolean = false;
   mostrarSenhaLogin: boolean = false;
   mostrarSeletorCor: boolean = false;
+  enviandoRedefinicao: boolean = false;
 
   constructor(
     private authService: AuthService,
@@ -70,14 +71,38 @@ export class LoginComponent {
     }
   }
 
-  esqueciSenha() {
-    // Placeholder -- fluxo de redefinição de senha do Firebase ainda não
-    // está ligado na tela.
-    this.toast.mostrar('Em breve.', '#ffc107');
-  }
+  async esqueciSenha() {
+    const email = this.loginEmail.trim();
+    if (!email) {
+      this.toast.mostrar('Digite seu e-mail no campo acima e clique em "Esqueceu a senha?" de novo.', '#ffc107');
+      return;
+    }
 
-  criarConta() {
-    // Placeholder -- cadastro de conta ainda não está ligado na tela.
-    this.toast.mostrar('Em breve.', '#ffc107');
+    const avisoEnviado = 'Se esse e-mail tiver uma conta, enviamos um link para redefinir a senha. Confira também a caixa de spam.';
+
+    this.enviandoRedefinicao = true;
+    try {
+      await this.authService.enviarRedefinicaoSenha(email);
+      this.toast.mostrar(avisoEnviado, '#28a745');
+    } catch (erro: any) {
+      switch (erro?.code) {
+        case 'auth/user-not-found':
+          // Mesmo aviso do sucesso de propósito: dizer "esse e-mail não existe"
+          // deixaria qualquer pessoa descobrir quem tem conta no sistema.
+          this.toast.mostrar(avisoEnviado, '#28a745');
+          break;
+        case 'auth/invalid-email':
+          this.toast.mostrar('E-mail inválido.', '#dc3545');
+          break;
+        case 'auth/too-many-requests':
+          this.toast.mostrar('Muitas tentativas. Espere um pouco e tente de novo.', '#dc3545');
+          break;
+        default:
+          this.toast.mostrar('Não foi possível enviar o e-mail agora. Verifique sua conexão.', '#dc3545');
+      }
+    }
+    this.enviandoRedefinicao = false;
+    // Mesma razão do fazerLogin: o await roda fora do que o Angular rastreia.
+    this.cdr.detectChanges();
   }
 }

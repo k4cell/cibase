@@ -48,9 +48,9 @@ export class HojeComponent implements OnInit, OnDestroy {
 
   trocarSubAbaHoje(aba: string) {
     this.subAbaHoje = aba;
-    if (aba === 'contatados' && !this.motorService.contatadosCarregados) {
-      this.motorService.carregarContatados();
-    }
+    // Sempre recarrega ao abrir: quem foi contatado agora há pouco (pela fila
+    // ou pelos Adiados) tem que estar na lista, não só quem já estava na 1ª carga.
+    if (aba === 'contatados') this.motorService.carregarContatados();
   }
 
   classeStatus(status: string): string {

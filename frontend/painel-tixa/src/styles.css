@@ -77,6 +77,12 @@ body {
   --tx-success-ink: #34d399;
   --tx-success-ink-forte: #6ee7b7;
 
+  /* "Recompra próxima": azul FIXO -- status é um significado, então não segue
+     a cor de destaque que o usuário escolhe (igual verde/amarelo/laranja/vermelho). */
+  --tx-info-soft: #1e3a5f;
+  --tx-info-ink: #93c5fd;
+  --tx-info-ink-forte: #bfdbfe;
+
   /* Navbar (fundo translúcido com blur) */
   --tx-navbar-bg: rgba(15, 23, 42, 0.85);
 
@@ -277,8 +283,8 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 .tx-login-headline {
   max-width: 30ch;
   margin: 0 0 14px;
-  font-size: 34px;
-  line-height: 1.18;
+  font-size: 38px;
+  line-height: 1.16;
   font-weight: 800;
   letter-spacing: -0.03em;
   color: #fff;
@@ -287,10 +293,10 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 
 .tx-login-lead {
   max-width: 44ch;
-  margin: 0 0 34px;
-  font-size: 15px;
+  margin: 0 0 30px;
+  font-size: 16.5px;
   line-height: 1.6;
-  color: #94a3b8;
+  color: #b4c0d1;
   text-wrap: pretty;
 }
 
@@ -307,9 +313,9 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   display: flex;
   align-items: center;
   gap: 11px;
-  font-size: 14px;
+  font-size: 15.5px;
   font-weight: 500;
-  color: #cbd5e1;
+  color: #dbe4f0;
 }
 
 .tx-login-points .tx-icon {
@@ -322,8 +328,85 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
-  color: #64748b;
+  font-size: 13.5px;
+  color: #8a98ad;
+}
+
+/* Prévia ilustrativa do painel -- cores fixas (o lado esquerdo é sempre escuro,
+   nos dois temas). Dados fictícios, só decorativa. */
+.tx-login-preview {
+  max-width: 460px;
+  margin-top: 34px;
+  padding: 18px 18px 14px;
+  background: rgba(30, 41, 59, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 24px 48px -20px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.tx-login-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.tx-login-preview-title { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+.tx-login-preview-count { font-size: 12.5px; color: #94a3b8; }
+
+.tx-login-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.tx-login-preview-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tx-login-preview-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tx-login-preview-info strong { font-size: 14px; font-weight: 600; color: #f1f5f9; }
+.tx-login-preview-info small { font-size: 12.5px; color: #94a3b8; }
+
+.tx-login-preview-badge {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tx-login-preview-badge--frio      { background: #450a0a; color: #f87171; }
+.tx-login-preview-badge--atrasado  { background: #451a03; color: #fbbf24; }
+.tx-login-preview-badge--recompra  { background: #1e3a5f; color: #93c5fd; }
+
+.tx-login-preview-foot {
+  display: flex;
+  gap: 32px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+.tx-login-preview-foot div { display: flex; flex-direction: column; gap: 2px; }
+.tx-login-preview-foot small { font-size: 12px; color: #94a3b8; }
+.tx-login-preview-foot strong { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: #34d399; }
+
+/* Em tela baixa (notebook) a prévia empurraria o login pra fora da tela. */
+@media (max-height: 860px) {
+  .tx-login-preview { display: none; }
 }
 
 .tx-login-panel {
@@ -346,23 +429,28 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 
 .tx-login-card {
   width: 100%;
-  max-width: 384px;
+  max-width: 408px;
 }
 
 .tx-login-title {
   margin: 0 0 6px;
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.025em;
   color: var(--tx-title);
 }
 
 .tx-login-subtitle {
-  margin: 0 0 32px;
-  font-size: 14.5px;
+  margin: 0 0 34px;
+  font-size: 15.5px;
   line-height: 1.55;
   color: var(--tx-label);
 }
+
+.tx-login-card .tx-field-label { font-size: 14px; }
+.tx-login-card .tx-input { padding-top: 12px; padding-bottom: 12px; font-size: 15.5px; }
+.tx-login-card .tx-input-wrap .tx-input-icon { width: 18px; height: 18px; }
+.tx-login-card .tx-btn-block { padding: 13px 16px; font-size: 15px; }
 
 .tx-login-form {
   display: flex;
@@ -377,8 +465,8 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   justify-content: center;
   gap: 7px;
   margin: 24px 0 0;
-  font-size: 12.5px;
-  color: var(--tx-faint);
+  font-size: 13.5px;
+  color: var(--tx-label);
 }
 
 .tx-login-footnote .tx-icon { width: 14px; height: 14px; }
@@ -392,20 +480,18 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 .tx-login-label-row .tx-field-label { margin-bottom: 0; }
 
 .tx-login-link {
-  font-size: 12.5px;
+  padding: 0;
+  font-family: inherit;
+  font-size: 13.5px;
   font-weight: 600;
-  color: var(--tx-primary);
+  color: var(--tx-primary-text-soft);
+  background: none;
+  border: none;
   cursor: pointer;
   text-decoration: none;
 }
 .tx-login-link:hover { text-decoration: underline; }
-
-.tx-login-criar-conta {
-  margin: 16px 0 0;
-  font-size: 13px;
-  text-align: center;
-  color: var(--tx-label);
-}
+.tx-login-link:disabled { opacity: 0.6; cursor: progress; text-decoration: none; }
 
 /* ------------------------------------------------------------------------------
    CAMPOS
@@ -1206,7 +1292,7 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 .tx-filter-pill--danger  { color: var(--tx-danger-ink); }
 .tx-filter-pill--warning { color: var(--tx-warning-ink); }
 .tx-filter-pill--success { color: var(--tx-success-ink); }
-.tx-filter-pill--info    { color: var(--tx-primary-text-soft); }
+.tx-filter-pill--info    { color: var(--tx-info-ink); }
 .tx-filter-pill--orange  { color: var(--tx-orange-ink); }
 .tx-filter-pill--muted   { color: var(--tx-label); }
 
@@ -1219,7 +1305,7 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 .tx-filter-pill--danger.is-active  { color: var(--tx-danger-ink-forte); }
 .tx-filter-pill--warning.is-active { color: var(--tx-warning-ink-forte); }
 .tx-filter-pill--success.is-active { color: var(--tx-success-ink-forte); }
-.tx-filter-pill--info.is-active    { color: var(--tx-primary); }
+.tx-filter-pill--info.is-active    { color: var(--tx-info-ink-forte); }
 .tx-filter-pill--orange.is-active  { color: var(--tx-orange-ink); }
 
 /* ------------------------------------------------------------------------------
@@ -1625,7 +1711,7 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 
 /* Cor por status do motor de recomendação -- por gravidade, não pela cor de
    destaque escolhida pelo usuário (mesmo princípio do farol de risco). */
-.tx-status--recompra  { background: var(--tx-primary-soft); color: var(--tx-primary-text-soft); border-color: transparent; }
+.tx-status--recompra  { background: var(--tx-info-soft); color: var(--tx-info-ink); border-color: transparent; }
 .tx-status--atrasado   { background: var(--tx-amber-soft); color: var(--tx-warning-ink); border-color: transparent; }
 .tx-status--adormecido { background: var(--tx-orange-soft); color: var(--tx-orange-ink); border-color: transparent; }
 .tx-status--frio       { background: var(--tx-red-soft); color: var(--tx-danger-ink); border-color: transparent; }

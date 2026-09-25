@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import {
   signInWithEmailAndPassword, signOut, onAuthStateChanged, User,
-  updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider
+  updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth } from './firebase.config';
 
@@ -54,6 +55,13 @@ export class AuthService {
 
   logout(): Promise<void> {
     return signOut(auth);
+  }
+
+  // Manda o e-mail de redefinição de senha do Firebase (o link leva pra uma
+  // página do próprio Firebase onde a pessoa escolhe a senha nova).
+  enviarRedefinicaoSenha(email: string): Promise<void> {
+    auth.languageCode = 'pt-BR'; // idioma do e-mail e da página de redefinição
+    return sendPasswordResetEmail(auth, email);
   }
 
   async obterToken(): Promise<string | null> {
