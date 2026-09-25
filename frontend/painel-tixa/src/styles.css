@@ -1126,6 +1126,40 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 .tx-subnav-pill:hover { color: var(--tx-title); }
 .tx-subnav-pill.is-active { background: var(--tx-primary); color: var(--tx-on-primary); }
 
+/* Aba do serviço aberto (Painel de Recuperação > Situação por serviço): o nome
+   do serviço + um "x" pra fechar e voltar aos cards. */
+.tx-subnav-pill--aberta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+  white-space: nowrap;
+  cursor: default;
+}
+.tx-subnav-pill--aberta > span { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+
+.tx-subnav-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: inherit;
+  background: rgb(0 0 0 / 0.16);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.tx-subnav-close:hover { background: rgb(0 0 0 / 0.3); }
+.tx-subnav-close .tx-icon { width: 13px; height: 13px; }
+
+/* Carteira do serviço: colunas de data (última compra / próxima prevista). */
+.tx-data-cell { font-size: 13.5px; font-weight: 500; color: var(--tx-title); white-space: nowrap; }
+.tx-data-sub { margin-top: 2px; font-size: 12px; color: var(--tx-label); white-space: nowrap; }
+.tx-data-sub--atraso { color: var(--tx-warning-ink); font-weight: 600; }
+
 .tx-filter-group {
   display: flex;
   align-items: center;
@@ -1873,11 +1907,20 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   border-radius: var(--tx-r-xl);
   box-shadow: var(--tx-shadow-lg);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
   animation: tx-modal-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tx-modal-card--sm { max-width: 420px; }
+.tx-modal-card--md { max-width: 620px; }
 .tx-modal-card--lg { max-width: 760px; }
+.tx-modal-card--xl { max-width: 1100px; }
+
+/* Cabeçalho/rodapé nunca encolhem; o corpo é o que rola quando não cabe. */
+.tx-modal-header, .tx-modal-footer, .tx-sale-footer { flex-shrink: 0; }
+.tx-modal-body, .tx-sale-body, .tx-ficha-body { min-height: 0; overflow-y: auto; }
 
 @keyframes tx-modal-in {
   from { opacity: 0; transform: translateY(14px) scale(0.98); }
@@ -1923,6 +1966,8 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   color: var(--tx-amber);
 }
 
+.tx-modal-header-badge { margin-left: auto; flex-shrink: 0; }
+
 .tx-modal-title {
   margin: 0 0 2px;
   font-size: 16.5px;
@@ -1966,21 +2011,58 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 
 .tx-ficha-body { padding: 22px 24px 24px; }
 
+/* Faixa de números de destaque no topo da ficha. */
+.tx-ficha-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.tx-ficha-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 18px;
+  background: var(--tx-surface-alt);
+  border: 1px solid var(--tx-border);
+  border-radius: var(--tx-r-md);
+}
+
+.tx-ficha-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tx-label);
+}
+
+.tx-ficha-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--tx-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-ficha-stat-sub { font-size: 12.5px; color: var(--tx-label); }
+
 .tx-ficha-list {
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin: 18px 0 0;
+  margin: 0;
   border: 1px solid var(--tx-border);
   border-radius: var(--tx-r-md);
   overflow: hidden;
 }
 
+/* Rótulo em cima, valor embaixo: o e-mail e o CPF ganham a largura toda da
+   coluna em vez de quebrar no meio da palavra. */
 .tx-ficha-row {
   display: grid;
-  grid-template-columns: 132px 1fr;
-  gap: 12px;
-  align-items: baseline;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
   padding: 11px 14px;
   border-bottom: 1px solid var(--tx-border);
 }
@@ -2002,12 +2084,13 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   font-size: 13.5px;
   font-weight: 500;
   color: var(--tx-title);
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
+/* Três colunas lado a lado: dados | situação por serviço | histórico. */
 .tx-ficha-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.1fr);
   gap: 24px;
   align-items: start;
 }
@@ -2025,7 +2108,7 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 260px;
+  max-height: 340px;
   overflow-y: auto;
   border: 1px solid var(--tx-border);
   border-radius: var(--tx-r-md);
@@ -2035,6 +2118,7 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 10px 14px;
   font-size: 13.5px;
   border-bottom: 1px solid var(--tx-border);
@@ -2111,6 +2195,61 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 
 .tx-sale-hint { margin: 10px 0 0; font-size: 12.5px; color: var(--tx-faint); }
 
+/* Venda com vários serviços: uma linha (serviço + valor) por item. */
+.tx-sale-items { display: flex; flex-direction: column; gap: 10px; }
+
+.tx-sale-items-head,
+.tx-sale-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 32px;
+  gap: 10px;
+  align-items: center;
+}
+
+.tx-sale-items-head {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tx-label);
+}
+
+.tx-currency-input--sm .tx-currency-prefix { padding: 0 10px; font-size: 13px; }
+.tx-currency-input--sm input { padding: 9px 10px; font-size: 15px; }
+
+.tx-sale-item-remover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--tx-label);
+  background: transparent;
+  border: 1px solid var(--tx-border);
+  border-radius: var(--tx-r-sm);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+.tx-sale-item-remover:hover { color: var(--tx-danger-ink); border-color: var(--tx-danger-ink); background: var(--tx-red-soft); }
+
+.tx-sale-add { margin-top: 12px; }
+
+.tx-sale-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding: 12px 16px;
+  background: var(--tx-surface-alt);
+  border: 1px solid var(--tx-border);
+  border-radius: var(--tx-r-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tx-label);
+}
+.tx-sale-total strong { font-size: 20px; letter-spacing: -0.02em; color: var(--tx-emerald); font-variant-numeric: tabular-nums; }
+
 .tx-sale-footer {
   display: flex;
   align-items: center;
@@ -2125,6 +2264,7 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
    RESPONSIVO
    ------------------------------------------------------------------------------ */
 @media (max-width: 960px) {
+  .tx-ficha-columns { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .tx-login-page { grid-template-columns: 1fr; }
   .tx-login-aside { display: none; }
 }
@@ -2137,6 +2277,8 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   .tx-toolbar .tx-btn-primary { width: 100%; }
   .tx-form-row { grid-template-columns: 1fr; }
   .tx-ficha-columns { grid-template-columns: 1fr; }
+  .tx-ficha-stats { grid-template-columns: 1fr; }
+  .tx-sale-items-head, .tx-sale-item { grid-template-columns: minmax(0, 1fr) 110px 32px; }
   .tx-toast { left: 16px; right: 16px; max-width: none; }
   .tx-conexao-aviso { left: 16px; right: 16px; transform: none; }
 }

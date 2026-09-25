@@ -35,7 +35,16 @@
 <div class="tx-subnav-row">
   <div class="tx-subnav">
     <button class="tx-subnav-pill" [class.is-active]="subAba === 'carteira'" (click)="trocarSubAba('carteira')">Carteira</button>
-    <button class="tx-subnav-pill" [class.is-active]="subAba === 'servico'" (click)="trocarSubAba('servico')">Situação por serviço</button>
+    <button class="tx-subnav-pill" [class.is-active]="subAba === 'servico' && !servicoSelecionado()" (click)="trocarSubAba('servico')">Situação por serviço</button>
+    <div class="tx-subnav-pill tx-subnav-pill--aberta is-active" *ngIf="subAba === 'servico' && servicoSelecionado() as servico">
+      <span>{{ servico.nome }}</span>
+      <button class="tx-subnav-close" (click)="fecharServico()" title="Fechar e voltar aos serviços" aria-label="Fechar aba do serviço">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 6 6 18"></path>
+          <path d="m6 6 12 12"></path>
+        </svg>
+      </button>
+    </div>
   </div>
   <button class="tx-btn tx-btn-secondary" (click)="abrirModalRegua()" title="Ajustar a régua de relacionamento">
       <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -53,11 +62,10 @@
 
 <!-- ABA: SITUAÇÃO POR SERVIÇO -->
 <ng-container *ngIf="subAba === 'servico'">
-  <div class="tx-resumo-grid" *ngIf="servicosService.servicos.length > 0">
+  <div class="tx-resumo-grid" *ngIf="servicosService.servicos.length > 0 && !servicoSelecionado()">
     <button
       class="tx-resumo-card"
       *ngFor="let resumo of resumoPorServico(); trackBy: trackPorServico"
-      [class.is-active]="servicoFiltroId === resumo.servico.id + ''"
       (click)="selecionarServico(resumo.servico.id)"
     >
       <span class="tx-resumo-card-nome">{{ resumo.servico.nome }}</span>
@@ -109,8 +117,10 @@
 <!-- TABELA DE CLIENTES -->
 <div class="tx-table-card">
   <div class="tx-table-head">
-    <h2>{{ subAba === 'servico' && servicoSelecionado() ? 'Clientes de ' + servicoSelecionado().nome : 'Carteira de clientes' }}</h2>
-    <span class="tx-table-count">{{ obterClientesFiltrados().length }} registro(s)</span>
+    <h2>{{ subAba === 'servico' && servicoSelecionado() ? 'Carteira · ' + servicoSelecionado().nome : 'Carteira de clientes' }}</h2>
+    <span class="tx-table-count">
+      <ng-container *ngIf="subAba === 'servico' && formatarCiclo(servicoSelecionado())">Ciclo de {{ formatarCiclo(servicoSelecionado()) }} · </ng-container>{{ obterClientesFiltrados().length }} registro(s)
+    </span>
   </div>
 
   <div class="tx-table-scroll">
@@ -119,10 +129,16 @@
         <tr>
           <th>ID</th>
           <th>Cliente</th>
-          <th>Status do Serviço</th>
+          <th>{{ subAba === 'servico' ? 'Situação' : 'Status do Serviço' }}</th>
+          <ng-container *ngIf="subAba === 'servico'">
+            <th>Última compra</th>
+            <th>Próxima prevista</th>
+          </ng-container>
           <th>Contato / WhatsApp</th>
-          <th style="text-align: center;">Compras</th>
-          <th>Receita</th>
+          <ng-container *ngIf="subAba === 'carteira'">
+            <th style="text-align: center;">Compras</th>
+            <th>Receita</th>
+          </ng-container>
           <th style="text-align: center;">Ações</th>
         </tr>
       </thead>
@@ -147,6 +163,21 @@
             </div>
           </td>
 
+          <ng-container *ngIf="subAba === 'servico'">
+            <td>
+              <ng-container *ngIf="datasDoServico(cliente.id) as datas">
+                <div class="tx-data-cell">{{ formatarData(datas.ultima) }}</div>
+                <div class="tx-data-sub">há {{ datas.diasDesdeUltima }} {{ datas.diasDesdeUltima === 1 ? 'dia' : 'dias' }}</div>
+              </ng-container>
+            </td>
+            <td>
+              <ng-container *ngIf="datasDoServico(cliente.id) as datas">
+                <div class="tx-data-cell">{{ formatarData(datas.proxima) }}</div>
+                <div class="tx-data-sub" [class.tx-data-sub--atraso]="datas.diasParaProxima < 0">{{ textoProximaCompra(datas.diasParaProxima) }}</div>
+              </ng-container>
+            </td>
+          </ng-container>
+
           <td (click)="$event.stopPropagation()">
             <div class="tx-phone-cell">
               <span class="tx-phone-link" (click)="abrirWhatsApp(cliente)" title="Abrir WhatsApp">
@@ -161,9 +192,11 @@
             </div>
           </td>
 
-          <td style="text-align: center;">{{ cliente.total_compras }}</td>
+          <ng-container *ngIf="subAba === 'carteira'">
+            <td style="text-align: center;">{{ cliente.total_compras }}</td>
 
-          <td class="tx-revenue-cell">R$ {{ formatarValor(cliente.valor_recuperado) }}</td>
+            <td class="tx-revenue-cell">R$ {{ formatarValor(cliente.valor_recuperado) }}</td>
+          </ng-container>
 
           <td (click)="$event.stopPropagation()">
             <div class="tx-actions-cell">
@@ -201,7 +234,7 @@
               </svg>
             </div>
             <div class="tx-empty-state-title">Nenhum cliente encontrado</div>
-            <div class="tx-empty-state-subtitle">Ajuste o filtro ou cadastre um novo cliente para começar.</div>
+            <div class="tx-empty-state-subtitle">{{ subAba === 'servico' ? 'Ninguém comprou esse serviço ainda, ou nenhum cliente está nesse status.' : 'Ajuste o filtro ou cadastre um novo cliente para começar.' }}</div>
           </td>
         </tr>
       </tbody>

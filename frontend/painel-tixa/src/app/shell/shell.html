@@ -207,7 +207,7 @@
 
     <!-- MODAL B: Nova Venda -->
     <div *ngIf="clientesService.clienteVendaId" class="tx-modal-backdrop">
-      <div class="tx-modal-card tx-modal-card--sm">
+      <div class="tx-modal-card tx-modal-card--md">
         <div class="tx-modal-header">
           <div class="tx-modal-header-icon tx-modal-header-icon--success">
             <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -219,7 +219,7 @@
           </div>
           <div>
             <h3 class="tx-modal-title">Nova Venda</h3>
-            <p class="tx-modal-caption">O valor entra na receita recuperada.</p>
+            <p class="tx-modal-caption">Adicione um ou mais serviços. Os valores entram na receita recuperada.</p>
           </div>
         </div>
 
@@ -229,17 +229,51 @@
             {{ clientesService.clienteVendaNome }}
           </div>
 
-          <label class="tx-field-label">Valor recebido</label>
-          <div class="tx-currency-input">
-            <span class="tx-currency-prefix">R$</span>
-            <input type="number" [(ngModel)]="clientesService.novaVendaValor" placeholder="0,00">
+          <div class="tx-sale-items">
+            <div class="tx-sale-items-head">
+              <span>Serviço</span>
+              <span>Valor</span>
+              <span></span>
+            </div>
+
+            <div class="tx-sale-item" *ngFor="let item of clientesService.novaVendaItens; let i = index">
+              <select class="tx-input" [(ngModel)]="item.servicoId" aria-label="Serviço">
+                <option value="">Não informado</option>
+                <option *ngFor="let servico of servicosService.servicos" [value]="servico.id">{{ servico.nome }}</option>
+              </select>
+
+              <div class="tx-currency-input tx-currency-input--sm">
+                <span class="tx-currency-prefix">R$</span>
+                <input type="number" min="0" [(ngModel)]="item.valor" placeholder="0,00" aria-label="Valor">
+              </div>
+
+              <button
+                class="tx-sale-item-remover"
+                (click)="clientesService.removerItemVenda(i)"
+                [style.visibility]="clientesService.novaVendaItens.length > 1 ? 'visible' : 'hidden'"
+                title="Remover este serviço"
+                aria-label="Remover este serviço"
+              >
+                <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M18 6 6 18"></path>
+                  <path d="m6 6 12 12"></path>
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <label class="tx-field-label" style="margin-top: 14px;">Serviço</label>
-          <select class="tx-input" [(ngModel)]="clientesService.novaVendaServicoId">
-            <option value="">Não informado</option>
-            <option *ngFor="let servico of servicosService.servicos" [value]="servico.id">{{ servico.nome }}</option>
-          </select>
+          <button class="tx-btn tx-btn-secondary tx-sale-add" (click)="clientesService.adicionarItemVenda()">
+            <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14"></path>
+              <path d="M12 5v14"></path>
+            </svg>
+            Adicionar serviço
+          </button>
+
+          <div class="tx-sale-total">
+            <span>Total da venda</span>
+            <strong>R$ {{ formatarValor(clientesService.totalNovaVenda()) }}</strong>
+          </div>
 
           <p class="tx-sale-hint">A data da última compra é atualizada automaticamente.</p>
         </div>
@@ -328,28 +362,40 @@
 
     <!-- MODAL C: Ficha Completa do Cliente -->
     <div *ngIf="clientesService.clienteDetalhe" class="tx-modal-backdrop">
-      <div class="tx-modal-card tx-modal-card--lg">
+      <div class="tx-modal-card tx-modal-card--xl">
         <div class="tx-modal-header">
           <div class="tx-avatar tx-avatar--lg">{{ clientesService.clienteDetalhe.nome ? clientesService.clienteDetalhe.nome.charAt(0).toUpperCase() : '?' }}</div>
           <div>
             <h3 class="tx-modal-title">{{ clientesService.clienteDetalhe.nome }}</h3>
             <p class="tx-modal-caption">Ficha completa · Cliente #{{ clientesService.clienteDetalhe.id }}</p>
           </div>
+          <span class="tx-badge tx-modal-header-badge" [ngStyle]="{'background-color': classificarOportunidade(clientesService.clienteDetalhe).corFundo, 'color': classificarOportunidade(clientesService.clienteDetalhe).corTexto}">
+            {{ classificarOportunidade(clientesService.clienteDetalhe).texto }}
+          </span>
         </div>
 
         <div class="tx-ficha-body">
+          <div class="tx-ficha-stats">
+            <div class="tx-ficha-stat">
+              <span class="tx-ficha-stat-label">Última compra</span>
+              <span class="tx-ficha-stat-value">{{ clientesService.clienteDetalhe.ultima_compra && clientesService.clienteDetalhe.ultima_compra !== 'Sem vendas' ? formatarData(clientesService.clienteDetalhe.ultima_compra) : 'Sem vendas' }}</span>
+              <span class="tx-ficha-stat-sub">{{ diasDesdeUltimaCompra(clientesService.clienteDetalhe) }}</span>
+            </div>
+            <div class="tx-ficha-stat">
+              <span class="tx-ficha-stat-label">Receita recuperada</span>
+              <span class="tx-ficha-stat-value tx-revenue-cell">R$ {{ formatarValor(clientesService.clienteDetalhe.valor_recuperado) }}</span>
+              <span class="tx-ficha-stat-sub">soma de todas as compras</span>
+            </div>
+            <div class="tx-ficha-stat">
+              <span class="tx-ficha-stat-label">Compras</span>
+              <span class="tx-ficha-stat-value">{{ clientesService.clienteDetalhe.total_compras || 0 }}</span>
+              <span class="tx-ficha-stat-sub">registradas no histórico</span>
+            </div>
+          </div>
+
           <div class="tx-ficha-columns">
             <div class="tx-ficha-col">
-              <span class="tx-badge" [ngStyle]="{'background-color': classificarOportunidade(clientesService.clienteDetalhe).corFundo, 'color': classificarOportunidade(clientesService.clienteDetalhe).corTexto}">
-                {{ classificarOportunidade(clientesService.clienteDetalhe).texto }}
-              </span>
-
-              <div class="tx-ficha-status-servicos" *ngIf="statusServicosCliente(clientesService.clienteDetalhe.id).length > 0">
-                <span class="tx-badge" *ngFor="let linha of statusServicosCliente(clientesService.clienteDetalhe.id)" [ngClass]="motorService.classeStatus(linha.status)">
-                  {{ linha.servico_nome }} · {{ linha.status }}
-                </span>
-              </div>
-
+              <h4 class="tx-ficha-vendas-title">Dados do cliente</h4>
               <dl class="tx-ficha-list">
                 <div class="tx-ficha-row">
                   <dt>Telefone</dt>
@@ -367,20 +413,28 @@
                   <dt>Nascimento</dt>
                   <dd>{{ formatarData(clientesService.clienteDetalhe.data_nascimento) }}</dd>
                 </div>
-                <div class="tx-ficha-row">
-                  <dt>Última compra</dt>
-                  <dd>{{ exibirTextoDias(clientesService.clienteDetalhe.ultima_compra) }}</dd>
-                </div>
-                <div class="tx-ficha-row">
-                  <dt>Receita recuperada</dt>
-                  <dd class="tx-revenue-cell">R$ {{ formatarValor(clientesService.clienteDetalhe.valor_recuperado) }}</dd>
-                </div>
               </dl>
             </div>
 
             <div class="tx-ficha-col">
+              <h4 class="tx-ficha-vendas-title">Situação por serviço</h4>
+              <ul class="tx-vendas-list" *ngIf="statusServicosCliente(clientesService.clienteDetalhe.id).length > 0; else semServicos">
+                <li class="tx-vendas-item" *ngFor="let linha of statusServicosCliente(clientesService.clienteDetalhe.id)">
+                  <span>
+                    {{ linha.servico_nome }}
+                    <span class="tx-vendas-item-servico">há {{ linha.dias_sem_comprar }} {{ linha.dias_sem_comprar === 1 ? 'dia' : 'dias' }} sem comprar</span>
+                  </span>
+                  <span class="tx-badge" [ngClass]="motorService.classeStatus(linha.status)">{{ linha.status }}</span>
+                </li>
+              </ul>
+              <ng-template #semServicos>
+                <p class="tx-sale-hint" style="margin-top: 0;">Nenhuma compra com serviço registrada ainda.</p>
+              </ng-template>
+            </div>
+
+            <div class="tx-ficha-col">
               <h4 class="tx-ficha-vendas-title">Histórico de compras</h4>
-              <p *ngIf="clientesService.carregandoVendasDetalhe" class="tx-sale-hint">Carregando...</p>
+              <p *ngIf="clientesService.carregandoVendasDetalhe" class="tx-sale-hint" style="margin-top: 0;">Carregando...</p>
               <ul *ngIf="!clientesService.carregandoVendasDetalhe && clientesService.vendasClienteDetalhe.length > 0" class="tx-vendas-list">
                 <li *ngFor="let venda of clientesService.vendasClienteDetalhe" class="tx-vendas-item">
                   <span>
@@ -390,7 +444,7 @@
                   <span class="tx-revenue-cell">R$ {{ formatarValor(venda.valor) }}</span>
                 </li>
               </ul>
-              <p *ngIf="!clientesService.carregandoVendasDetalhe && clientesService.vendasClienteDetalhe.length === 0" class="tx-sale-hint">Nenhuma compra registrada ainda.</p>
+              <p *ngIf="!clientesService.carregandoVendasDetalhe && clientesService.vendasClienteDetalhe.length === 0" class="tx-sale-hint" style="margin-top: 0;">Nenhuma compra registrada ainda.</p>
             </div>
           </div>
         </div>

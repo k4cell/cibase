@@ -34,8 +34,8 @@ export class ClientesService {
 
   clienteVendaId: number | null = null;
   clienteVendaNome: string = '';
-  novaVendaValor: number | null = null;
-  novaVendaServicoId: string = '';
+  // Uma venda pode ter vários serviços: cada linha é um serviço + o valor dele.
+  novaVendaItens: { servicoId: string; valor: number | null }[] = [{ servicoId: '', valor: null }];
 
   clienteParaArquivar: any = null;
   arquivandoCliente: boolean = false;
@@ -423,27 +423,42 @@ export class ClientesService {
   abrirModalVenda(cliente: any) {
     this.clienteVendaId = cliente.id;
     this.clienteVendaNome = cliente.nome;
-    this.novaVendaValor = null;
-    this.novaVendaServicoId = '';
+    this.novaVendaItens = [{ servicoId: '', valor: null }];
   }
 
   fecharModalVenda() {
     this.clienteVendaId = null;
     this.clienteVendaNome = '';
-    this.novaVendaValor = null;
-    this.novaVendaServicoId = '';
+    this.novaVendaItens = [{ servicoId: '', valor: null }];
+  }
+
+  adicionarItemVenda() {
+    this.novaVendaItens.push({ servicoId: '', valor: null });
+  }
+
+  removerItemVenda(indice: number) {
+    if (this.novaVendaItens.length > 1) this.novaVendaItens.splice(indice, 1);
+  }
+
+  totalNovaVenda(): number {
+    return this.novaVendaItens.reduce((soma, item) => soma + (item.valor && item.valor > 0 ? item.valor : 0), 0);
   }
 
   confirmarVenda() {
-    if (!this.novaVendaValor || this.novaVendaValor <= 0) {
-      this.toast.mostrar('Por favor, insira um valor válido.', '#ffc107');
+    if (this.novaVendaItens.some(item => !item.valor || item.valor <= 0)) {
+      this.toast.mostrar(
+        this.novaVendaItens.length > 1 ? 'Informe um valor válido para cada serviço.' : 'Por favor, insira um valor válido.',
+        '#ffc107'
+      );
       return;
     }
 
     const dadosVenda = {
       cliente_id: this.clienteVendaId,
-      valor: this.novaVendaValor,
-      servico_id: this.novaVendaServicoId ? parseInt(this.novaVendaServicoId, 10) : null
+      itens: this.novaVendaItens.map(item => ({
+        servico_id: item.servicoId ? parseInt(item.servicoId, 10) : null,
+        valor: item.valor as number
+      }))
     };
 
     this.fecharModalVenda();

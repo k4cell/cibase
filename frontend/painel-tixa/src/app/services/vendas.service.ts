@@ -8,13 +8,14 @@ import { RefrescoService } from './refresco.service';
 export class VendasService {
   constructor(private http: HttpClient, private toast: ToastService, private refresco: RefrescoService) {}
 
-  salvarVenda(dadosVenda: { cliente_id: number | null; valor: number; servico_id: number | null }, aoSalvar: () => void) {
+  salvarVenda(dadosVenda: { cliente_id: number | null; itens: { servico_id: number | null; valor: number }[] }, aoSalvar: () => void) {
     this.http.post<any>(`${API_BASE_URL}/vendas`, dadosVenda).subscribe({
       next: (resposta) => {
         if (resposta.erro) {
           this.toast.mostrar('Erro: ' + resposta.erro, '#dc3545');
         } else {
-          this.toast.mostrar('Venda registrada!', '#28a745');
+          const qtd = dadosVenda.itens.length;
+          this.toast.mostrar(qtd > 1 ? `Venda registrada com ${qtd} serviços!` : 'Venda registrada!', '#28a745');
           aoSalvar();
         }
         this.refresco.notificar();

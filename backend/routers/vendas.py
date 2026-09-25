@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from auth import verificar_token
 from database import conectar_banco
-from models import NovaVenda
+from models import ItemVenda, NovaVenda
 
 router = APIRouter(dependencies=[Depends(verificar_token)])
 
@@ -13,17 +13,25 @@ router = APIRouter(dependencies=[Depends(verificar_token)])
 # ==============================================================================
 @router.post("/vendas")
 def registrar_venda(venda: NovaVenda):
+    itens = venda.itens
+    if not itens and venda.valor is not None:
+        itens = [ItemVenda(valor=venda.valor, servico_id=venda.servico_id)]
+    if not itens:
+        return {"erro": "Informe pelo menos um serviço com valor."}
+    if any(item.valor <= 0 for item in itens):
+        return {"erro": "O valor de cada serviço precisa ser maior que zero."}
+
     try:
         conexao = conectar_banco()
         cursor = conexao.cursor()
 
         comando_sql = "INSERT INTO vendas (cliente_id, valor, servico_id, data_da_venda) VALUES (%s, %s, %s, CURRENT_DATE);"
-        cursor.execute(comando_sql, (venda.cliente_id, venda.valor, venda.servico_id))
+        cursor.executemany(comando_sql, [(venda.cliente_id, item.valor, item.servico_id) for item in itens])
 
         conexao.commit()
         cursor.close()
         conexao.close()
-        return {"mensagem": "Venda registrada com sucesso!"}
+        return {"mensagem": "Venda registrada com sucesso!", "itens_registrados": len(itens)}
     except Exception as erro:
         return {"erro": f"Erro interno ao registrar venda: {erro}"}
 

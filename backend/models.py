@@ -9,9 +9,18 @@ class NovoCliente(BaseModel):
     data_nascimento: str
 
 
-class NovaVenda(BaseModel):
-    cliente_id: int
+class ItemVenda(BaseModel):
     valor: float
+    servico_id: int | None = None
+
+
+class NovaVenda(BaseModel):
+    """ Uma venda pode ter vários serviços (`itens`) -- cada item vira uma linha
+    em `vendas`, todas na mesma data. `valor`/`servico_id` soltos continuam
+    aceitos (uma venda de um item só) pra não quebrar quem já chama assim. """
+    cliente_id: int
+    itens: list[ItemVenda] | None = None
+    valor: float | None = None
     servico_id: int | None = None
 
 

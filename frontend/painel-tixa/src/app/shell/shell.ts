@@ -132,11 +132,18 @@ export class ShellComponent implements OnInit, OnDestroy {
     return this.nomeUsuarioExibicao().charAt(0).toUpperCase();
   }
 
-  // Status do motor por serviço (ver services/motor.service.ts) do cliente
-  // aberto na Ficha -- só os serviços fora do "Em dia" aparecem aqui, os
-  // demais estão implicitamente em dia.
+  // Situação de cada serviço que o cliente aberto na Ficha já comprou (ver
+  // services/motor.service.ts), do mais atrasado pro mais em dia.
   statusServicosCliente(clienteId: number | undefined): any[] {
     if (!clienteId) return [];
-    return this.motorService.classificacaoPorCliente[clienteId] || [];
+    return [...(this.motorService.classificacaoPorCliente[clienteId] || [])].sort((a, b) => b.razao - a.razao);
+  }
+
+  // "há 39 dias" da última compra do cliente (qualquer serviço) pro card da Ficha.
+  diasDesdeUltimaCompra(cliente: any): string {
+    if (!cliente?.ultima_compra || cliente.ultima_compra === 'Sem vendas') return 'nenhuma compra ainda';
+    const dias = Math.floor((Date.now() - new Date(cliente.ultima_compra).getTime()) / (1000 * 3600 * 24));
+    if (dias <= 0) return 'hoje';
+    return dias === 1 ? 'há 1 dia' : `há ${dias} dias`;
   }
 }

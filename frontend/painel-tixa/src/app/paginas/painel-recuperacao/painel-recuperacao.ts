@@ -7,7 +7,7 @@ import { EstatisticasService } from '../../services/estatisticas.service';
 import { MotorService } from '../../services/motor.service';
 import { ServicosService } from '../../services/servicos.service';
 import { RefrescoService } from '../../services/refresco.service';
-import { formatarValor, formatarCiclo } from '../../utils/formatacao';
+import { formatarValor, formatarCiclo, formatarData } from '../../utils/formatacao';
 import { ArrastarRolarDirective } from '../../utils/arrastar-rolar.directive';
 
 // Status do Serviço de cada cliente nesta tela -- SEMPRE pela última compra:
@@ -27,11 +27,13 @@ const STATUS_RESUMO = ['Recompra próxima', 'Atrasado', 'Adormecido', 'Frio', 'E
   templateUrl: './painel-recuperacao.html'
 })
 export class PainelRecuperacaoComponent implements OnInit, OnDestroy {
-  // "Carteira" = todos os clientes com o pior status de cada um; "Por serviço"
-  // = um card por serviço e, ao escolher um, a mesma tabela só daquele serviço.
+  // "Carteira" = todos os clientes com o pior status de cada um; "Situação por
+  // serviço" = um card por serviço e, ao escolher um, abre uma aba com a
+  // carteira só daquele serviço (quem já o comprou, do mais atrasado pro mais
+  // em dia).
   subAba: 'carteira' | 'servico' = 'carteira';
   filtroAtual: string = 'Todos';
-  // 'todos' na aba Carteira = visão geral; na aba Por serviço = nenhum
+  // 'todos' na aba Carteira = visão geral; em Situação por serviço = nenhum
   // serviço escolhido ainda (só os cards aparecem).
   servicoFiltroId: string = 'todos';
 
@@ -44,6 +46,7 @@ export class PainelRecuperacaoComponent implements OnInit, OnDestroy {
 
   readonly formatarValor = formatarValor;
   readonly formatarCiclo = formatarCiclo;
+  readonly formatarData = formatarData;
 
   private desregistrar!: () => void;
 
@@ -77,10 +80,14 @@ export class PainelRecuperacaoComponent implements OnInit, OnDestroy {
     this.servicoFiltroId = 'todos';
   }
 
-  // Clicar no card já escolhido desmarca (volta a só os cards).
   selecionarServico(servicoId: number) {
-    const id = String(servicoId);
-    this.servicoFiltroId = this.servicoFiltroId === id ? 'todos' : id;
+    this.servicoFiltroId = String(servicoId);
+    this.filtroAtual = 'Todos';
+  }
+
+  // Fecha a aba do serviço e volta pros cards.
+  fecharServico() {
+    this.servicoFiltroId = 'todos';
     this.filtroAtual = 'Todos';
   }
 
@@ -113,15 +120,48 @@ export class PainelRecuperacaoComponent implements OnInit, OnDestroy {
   obterClientesFiltrados() {
     // Num serviço específico só entra quem JÁ comprou aquele serviço --
     // quem nunca comprou não tem situação nenhuma nele pra mostrar.
-    const base = this.servicoFiltroId === 'todos'
-      ? this.clientesService.clientes
-      : this.clientesService.clientes.filter(cliente => this.linhaDoServico(cliente.id) !== undefined);
+    if (this.servicoFiltroId === 'todos') {
+      if (this.filtroAtual === 'Todos') return this.clientesService.clientes;
+      return this.clientesService.clientes.filter(cliente => this.statusServicoCliente(cliente.id).status === this.filtroAtual);
+    }
 
-    if (this.filtroAtual === 'Todos') return base;
-    return base.filter(cliente => this.statusServicoCliente(cliente.id).status === this.filtroAtual);
+    // Do mais atrasado (maior razão dias sem comprar / ciclo) pro mais em dia.
+    return this.clientesService.clientes
+      .filter(cliente => this.linhaDoServico(cliente.id) !== undefined)
+      .filter(cliente => this.filtroAtual === 'Todos' || this.statusServicoCliente(cliente.id).status === this.filtroAtual)
+      .sort((a, b) => this.linhaDoServico(b.id).razao - this.linhaDoServico(a.id).razao);
   }
 
-  private linhaDoServico(clienteId: number) {
+  // Datas da carteira do serviço, derivadas da linha do motor: a última compra
+  // é hoje menos os dias sem comprar, e a próxima prevista é ela mais o ciclo
+  // esperado (negativo em 'diasParaProxima' = já passou do ciclo).
+  datasDoServico(clienteId: number): { ultima: string; diasDesdeUltima: number; proxima: string; diasParaProxima: number } | null {
+    const linha = this.linhaDoServico(clienteId);
+    if (!linha) return null;
+    return {
+      ultima: this.dataIso(-linha.dias_sem_comprar),
+      diasDesdeUltima: linha.dias_sem_comprar,
+      proxima: this.dataIso(linha.ciclo_esperado - linha.dias_sem_comprar),
+      diasParaProxima: linha.ciclo_esperado - linha.dias_sem_comprar
+    };
+  }
+
+  // Data local (hoje + N dias) em aaaa-mm-dd, sem passar por UTC.
+  private dataIso(diasAPartirDeHoje: number): string {
+    const data = new Date();
+    data.setDate(data.getDate() + diasAPartirDeHoje);
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${data.getFullYear()}-${mes}-${dia}`;
+  }
+
+  textoProximaCompra(dias: number): string {
+    if (dias === 0) return 'hoje';
+    if (dias > 0) return dias === 1 ? 'em 1 dia' : `em ${dias} dias`;
+    return dias === -1 ? 'atrasada há 1 dia' : `atrasada há ${-dias} dias`;
+  }
+
+  private linhaDoServico(clienteId: number): any {
     return (this.motorService.classificacaoPorCliente[clienteId] || [])
       .find(l => String(l.servico_id) === this.servicoFiltroId);
   }
@@ -138,9 +178,8 @@ export class PainelRecuperacaoComponent implements OnInit, OnDestroy {
     }
 
     const linha = this.linhaDoServico(clienteId);
-    return linha
-      ? { servicoNome: linha.servico_nome, status: linha.status, extras: 0 }
-      : { servicoNome: '', status: 'Sem histórico', extras: 0 };
+    // Sem o nome do serviço no badge: a aba já se chama como ele.
+    return { servicoNome: '', status: linha ? linha.status : 'Sem histórico', extras: 0 };
   }
 
   classeStatus(status: string): string {
