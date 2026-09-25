@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
@@ -66,6 +66,35 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.desregistrar();
+  }
+
+  // Clicar fora fecha a paleta de cores e o menu do usuário. Escutamos o
+  // documento inteiro em vez de usar uma "cortina" (backdrop) transparente
+  // dentro da navbar: a navbar tem backdrop-filter, e isso faz um elemento
+  // position:fixed dentro dela cobrir só a própria barra, não a tela toda --
+  // por isso clicar no conteúdo da página não fechava nada.
+  @HostListener('document:click', ['$event'])
+  aoClicarNoDocumento(evento: MouseEvent) {
+    const alvo = evento.target as HTMLElement | null;
+    if (this.mostrarSeletorCor && !alvo?.closest('.tx-color-picker-wrap')) this.mostrarSeletorCor = false;
+    if (this.mostrarMenuUsuario && !alvo?.closest('.tx-user-menu-wrap')) this.mostrarMenuUsuario = false;
+  }
+
+  // Esc fecha o que estiver aberto por cima: menus da navbar ou a Ficha.
+  @HostListener('document:keydown.escape')
+  aoApertarEsc() {
+    if (this.mostrarSeletorCor || this.mostrarMenuUsuario) {
+      this.mostrarSeletorCor = false;
+      this.mostrarMenuUsuario = false;
+    } else if (this.clientesService.clienteDetalhe) {
+      this.clientesService.fecharFichaCliente();
+    }
+  }
+
+  // Clicar no fundo escurecido (fora do cartão) fecha a Ficha -- só quando o
+  // clique COMEÇA no fundo, pra arrastar um texto de dentro pra fora não fechar.
+  aoClicarNoFundoDaFicha(evento: MouseEvent) {
+    if (evento.target === evento.currentTarget) this.clientesService.fecharFichaCliente();
   }
 
   sair() {

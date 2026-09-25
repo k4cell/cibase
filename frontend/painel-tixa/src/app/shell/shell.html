@@ -72,8 +72,6 @@
           </svg>
         </button>
 
-        <div class="tx-color-picker-backdrop" *ngIf="mostrarSeletorCor" (click)="mostrarSeletorCor = false"></div>
-
         <div class="tx-color-picker-menu" *ngIf="mostrarSeletorCor">
           <button
             *ngFor="let paleta of tema.PALETAS_COR"
@@ -112,8 +110,6 @@
             <span class="tx-user-role">Conta principal</span>
           </div>
         </button>
-
-        <div class="tx-color-picker-backdrop" *ngIf="mostrarMenuUsuario" (click)="mostrarMenuUsuario = false"></div>
 
         <div class="tx-color-picker-menu tx-user-menu" *ngIf="mostrarMenuUsuario">
           <button class="tx-color-picker-item" routerLink="/configuracoes" (click)="mostrarMenuUsuario = false">
@@ -361,7 +357,7 @@
     </div>
 
     <!-- MODAL C: Ficha Completa do Cliente -->
-    <div *ngIf="clientesService.clienteDetalhe" class="tx-modal-backdrop">
+    <div *ngIf="clientesService.clienteDetalhe" class="tx-modal-backdrop" (mousedown)="aoClicarNoFundoDaFicha($event)">
       <div class="tx-modal-card tx-modal-card--xl">
         <div class="tx-modal-header">
           <div class="tx-avatar tx-avatar--lg">{{ clientesService.clienteDetalhe.nome ? clientesService.clienteDetalhe.nome.charAt(0).toUpperCase() : '?' }}</div>
