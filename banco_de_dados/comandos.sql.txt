@@ -54,6 +54,11 @@ CREATE TABLE servicos (
 -- meses, manicure pensa em dias).
 -- ALTER TABLE servicos ADD COLUMN IF NOT EXISTS unidade_ciclo VARCHAR(10) DEFAULT 'dias';
 
+-- Migração (v0.30.0): mensagem-modelo do WhatsApp por serviço. NULL = usa a
+-- mensagem padrão do motor (que depende do status). O texto aceita {nome}
+-- (primeiro nome do cliente) e {servico} (nome do serviço).
+-- ALTER TABLE servicos ADD COLUMN IF NOT EXISTS mensagem_modelo TEXT;
+
 -- Migração (Fase 2 do motor): travas manuais "não contatar" e "problema
 -- aberto" (documento "motor-de-recomendacao.pdf", seção 3 -- travas -- e
 -- seção 6 -- persistência). São por CLIENTE (não por linha cliente+serviço):

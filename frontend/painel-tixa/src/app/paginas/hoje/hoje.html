@@ -94,6 +94,14 @@
 
     <textarea class="tx-fila-textarea" [(ngModel)]="item.mensagemDraft" rows="2"></textarea>
 
+    <div class="tx-fila-modelo" *ngIf="item.mensagemDraft.trim() && item.mensagemDraft !== item.mensagemInicial; else infoModelo">
+      <button class="tx-link-btn" (click)="motorService.salvarModeloDoServico(item)">Salvar como modelo de {{ item.servicoNome }}</button>
+      <span>As próximas mensagens desse serviço já saem assim.</span>
+    </div>
+    <ng-template #infoModelo>
+      <div class="tx-fila-modelo" *ngIf="item.temModelo">Mensagem do modelo de {{ item.servicoNome }}</div>
+    </ng-template>
+
     <div class="tx-fila-acoes">
       <button class="tx-btn tx-btn-primary" (click)="motorService.enviarMensagemFila(item)">
         <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -170,6 +178,20 @@
       <div class="tx-contatado-status">
         <span class="tx-toolbar-info">{{ item.dias_atras === 0 ? 'Enviado hoje' : 'Enviado há ' + item.dias_atras + ' dia(s)' }}</span>
         <span class="tx-badge tx-status--em-dia" *ngIf="item.reativado">Voltou a comprar em {{ formatarData(item.data_reativacao) }}</span>
+
+        <ng-container *ngIf="item.desfecho === 'recusou'">
+          <span class="tx-badge tx-status--frio">Recusou</span>
+          <button class="tx-link-btn" (click)="motorService.desfazerDesfecho(item)">Desfazer</button>
+        </ng-container>
+        <ng-container *ngIf="item.desfecho === 'adiar_com_data'">
+          <span class="tx-badge tx-status--recompra">Falar em {{ formatarData(item.retorno_em) }}</span>
+          <button class="tx-link-btn" (click)="motorService.desfazerDesfecho(item)">Desfazer</button>
+        </ng-container>
+
+        <ng-container *ngIf="item.pode_registrar_desfecho && !item.reativado">
+          <button class="tx-btn tx-btn-secondary tx-btn-sm" (click)="registrarRecusa(item)" title="O cliente respondeu que não quer">Recusou</button>
+          <button class="tx-btn tx-btn-secondary tx-btn-sm" (click)="abrirFalarDepois(item)" title="O cliente pediu pra ser procurado mais tarde">Falar depois</button>
+        </ng-container>
       </div>
     </div>
   </div>
@@ -177,6 +199,45 @@
 
 </div>
 <!-- FIM SUB-ABA: CONTATADOS -->
+
+<!-- MODAL: Falar depois (cliente pediu pra ser procurado mais tarde) -->
+<div *ngIf="contatadoParaAdiar" class="tx-modal-backdrop">
+  <div class="tx-modal-card tx-modal-card--sm">
+    <div class="tx-modal-header">
+      <div class="tx-modal-header-icon tx-modal-header-icon--warning">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+        </svg>
+      </div>
+      <div>
+        <h3 class="tx-modal-title">Falar depois</h3>
+        <p class="tx-modal-caption">{{ contatadoParaAdiar.cliente_nome }} · {{ contatadoParaAdiar.servico_nome }}</p>
+      </div>
+    </div>
+
+    <div class="tx-sale-body">
+      <label class="tx-field-label" for="tx-data-falar-depois">Voltar a falar com essa pessoa em</label>
+      <input id="tx-data-falar-depois" type="date" class="tx-input" [min]="dataEmDias(1)" [(ngModel)]="dataFalarDepois">
+
+      <div class="tx-data-atalhos">
+        <button class="tx-btn tx-btn-secondary tx-btn-sm" (click)="dataFalarDepois = dataEmDias(7)">Em 1 semana</button>
+        <button class="tx-btn tx-btn-secondary tx-btn-sm" (click)="dataFalarDepois = dataEmDias(30)">Em 1 mês</button>
+        <button class="tx-btn tx-btn-secondary tx-btn-sm" (click)="dataFalarDepois = dataEmDias(90)">Em 3 meses</button>
+      </div>
+
+      <p class="tx-sale-hint">Até lá ela não aparece na fila de hoje. Dá pra desfazer na lista de Contatados.</p>
+    </div>
+
+    <div class="tx-sale-footer">
+      <button class="tx-btn tx-btn-secondary" (click)="fecharFalarDepois()" [disabled]="salvandoDesfecho">Cancelar</button>
+      <button class="tx-btn tx-btn-primary" (click)="confirmarFalarDepois()" [disabled]="salvandoDesfecho">
+        <span *ngIf="salvandoDesfecho" class="tx-spinner"></span>
+        {{ salvandoDesfecho ? 'Salvando...' : 'Confirmar' }}
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL: Lista de Adiados -->
 <div *ngIf="mostrarAdiados" class="tx-modal-backdrop">

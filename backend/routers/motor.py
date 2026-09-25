@@ -77,12 +77,14 @@ def obter_fila(modo: str = "recuperacao", tamanho: int = 10, servico_id: int | N
 
             cursor.execute("SELECT id, nome FROM clientes WHERE id = ANY(%s);", (ids_clientes,))
             nomes_clientes = dict(cursor.fetchall())
-            cursor.execute("SELECT id, nome FROM servicos WHERE id = ANY(%s);", (ids_servicos,))
-            nomes_servicos = dict(cursor.fetchall())
+            cursor.execute("SELECT id, nome, mensagem_modelo FROM servicos WHERE id = ANY(%s);", (ids_servicos,))
+            servicos = {id_: (nome, modelo) for id_, nome, modelo in cursor.fetchall()}
 
             for linha in linhas:
                 linha["cliente_nome"] = nomes_clientes.get(linha["cliente_id"], "Desconhecido")
-                linha["servico_nome"] = nomes_servicos.get(linha["servico_id"], "Desconhecido")
+                nome_servico, modelo = servicos.get(linha["servico_id"], ("Desconhecido", None))
+                linha["servico_nome"] = nome_servico
+                linha["mensagem_modelo"] = modelo
 
         cursor.close()
         conexao.close()
@@ -147,11 +149,26 @@ def obter_contatados():
     `reativado` = o cliente comprou o MESMO serviço da mensagem em data
     estritamente posterior ao contato (a unidade do motor é cliente+serviço;
     estritamente depois pra não contar uma venda que já existia no mesmo dia
-    do clique). `data_reativacao` é a primeira dessas compras. """
+    do clique). `data_reativacao` é a primeira dessas compras.
+
+    Desfecho pós-contato (documento: só 2 desfechos pedem clique -- "recusou" e
+    "me procure depois"): só o envio MAIS RECENTE de cada linha (cliente+serviço)
+    carrega isso, e só enquanto nenhum contato posterior o tornou velho.
+    - `pode_registrar_desfecho`: é o último contato da linha e ainda é só o envio
+      (silêncio) -- a tela mostra os botões "Recusou" / "Falar depois".
+    - `desfecho` ('recusou' | 'adiar_com_data'), `retorno_em` e
+      `desfecho_contato_id` (pro "Desfazer"): o que foi registrado depois do envio. """
     try:
         conexao = conectar_banco()
         cursor = conexao.cursor()
         hoje = date.today()
+
+        cursor.execute("""
+            SELECT DISTINCT ON (cliente_id, servico_id) cliente_id, servico_id, id, resultado, data_reentrada
+            FROM contatos
+            ORDER BY cliente_id, servico_id, data_contato DESC, id DESC;
+        """)
+        ultimo_por_linha = {(cli, srv): (id_, resultado, reentrada) for cli, srv, id_, resultado, reentrada in cursor.fetchall()}
 
         cursor.execute("""
             SELECT c.cliente_id, c.servico_id, c.data_contato, cl.nome, s.nome,
@@ -166,8 +183,19 @@ def obter_contatados():
             ORDER BY c.data_contato DESC, c.id DESC;
         """)
 
-        contatados = [
-            {
+        contatados = []
+        linhas_ja_vistas = set()  # o 1º envio de cada linha (mais recente) é o "atual"
+        for cliente_id, servico_id, data_contato, cliente_nome, servico_nome, data_reativacao in cursor.fetchall():
+            linha = (cliente_id, servico_id)
+            envio_atual = linha not in linhas_ja_vistas
+            linhas_ja_vistas.add(linha)
+
+            ultimo_id, ultimo_resultado, ultima_reentrada = ultimo_por_linha.get(linha, (None, None, None))
+            desfecho = None
+            if envio_atual and ultimo_resultado in ("recusou", "adiar_com_data"):
+                desfecho = ultimo_resultado
+
+            contatados.append({
                 "cliente_id": cliente_id,
                 "cliente_nome": cliente_nome,
                 "servico_id": servico_id,
@@ -176,9 +204,11 @@ def obter_contatados():
                 "dias_atras": (hoje - data_contato).days,
                 "reativado": data_reativacao is not None,
                 "data_reativacao": data_reativacao.isoformat() if data_reativacao else None,
-            }
-            for cliente_id, servico_id, data_contato, cliente_nome, servico_nome, data_reativacao in cursor.fetchall()
-        ]
+                "pode_registrar_desfecho": envio_atual and ultimo_resultado == "silencio",
+                "desfecho": desfecho,
+                "retorno_em": ultima_reentrada.isoformat() if desfecho and ultima_reentrada else None,
+                "desfecho_contato_id": ultimo_id if desfecho else None,
+            })
 
         cursor.close()
         conexao.close()

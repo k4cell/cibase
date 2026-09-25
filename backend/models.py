@@ -38,6 +38,15 @@ class NovoServico(BaseModel):
     nome: str
     dias_ciclo: int
     unidade_ciclo: str = "dias"
+    # Mensagem-modelo do WhatsApp desse serviço ({nome} = primeiro nome do
+    # cliente, {servico} = nome do serviço). Só é alterada no PUT quando vem no
+    # corpo -- assim quem não conhece o campo (versão antiga da tela) não apaga.
+    mensagem_modelo: str | None = None
+
+
+class MensagemModelo(BaseModel):
+    """ Salva (ou limpa, com texto vazio/None) só a mensagem-modelo de um serviço. """
+    mensagem_modelo: str | None = None
 
 
 class ConfiguracoesAtualizacao(BaseModel):

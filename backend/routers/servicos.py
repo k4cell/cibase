@@ -3,9 +3,17 @@ from fastapi import APIRouter, Depends
 
 from auth import verificar_token
 from database import conectar_banco
-from models import NovoServico
+from models import MensagemModelo, NovoServico
 
 router = APIRouter(dependencies=[Depends(verificar_token)])
+
+LIMITE_MENSAGEM_MODELO = 1000
+
+
+def _limpar_mensagem_modelo(texto: str | None) -> str | None:
+    """ Vazio vira NULL (= volta a usar a mensagem padrão do motor). """
+    texto = (texto or "").strip()
+    return texto or None
 
 # ==============================================================================
 # CATÁLOGO DE SERVIÇOS (motor de recomendação: unidade = cliente + serviço)
@@ -15,11 +23,14 @@ def listar_servicos():
     try:
         conexao = conectar_banco()
         cursor = conexao.cursor()
-        cursor.execute("SELECT id, nome, dias_ciclo, unidade_ciclo FROM servicos ORDER BY nome;")
+        cursor.execute("SELECT id, nome, dias_ciclo, unidade_ciclo, mensagem_modelo FROM servicos ORDER BY nome;")
         linhas = cursor.fetchall()
         cursor.close()
         conexao.close()
-        return {"servicos": [{"id": l[0], "nome": l[1], "dias_ciclo": l[2], "unidade_ciclo": l[3] or "dias"} for l in linhas]}
+        return {"servicos": [
+            {"id": l[0], "nome": l[1], "dias_ciclo": l[2], "unidade_ciclo": l[3] or "dias", "mensagem_modelo": l[4]}
+            for l in linhas
+        ]}
     except Exception as erro:
         return {"erro": f"Erro ao buscar serviços: {erro}"}
 
@@ -56,13 +67,19 @@ def atualizar_servico(servico_id: int, servico: NovoServico):
     if servico.dias_ciclo <= 0:
         return {"erro": "O ciclo esperado precisa ser maior que zero."}
 
+    campos = ["nome = %s", "dias_ciclo = %s", "unidade_ciclo = %s"]
+    valores = [nome, servico.dias_ciclo, servico.unidade_ciclo]
+    if "mensagem_modelo" in servico.model_fields_set:
+        mensagem = _limpar_mensagem_modelo(servico.mensagem_modelo)
+        if mensagem and len(mensagem) > LIMITE_MENSAGEM_MODELO:
+            return {"erro": f"A mensagem pode ter no máximo {LIMITE_MENSAGEM_MODELO} caracteres."}
+        campos.append("mensagem_modelo = %s")
+        valores.append(mensagem)
+
     try:
         conexao = conectar_banco()
         cursor = conexao.cursor()
-        cursor.execute(
-            "UPDATE servicos SET nome = %s, dias_ciclo = %s, unidade_ciclo = %s WHERE id = %s;",
-            (nome, servico.dias_ciclo, servico.unidade_ciclo, servico_id)
-        )
+        cursor.execute(f"UPDATE servicos SET {', '.join(campos)} WHERE id = %s;", (*valores, servico_id))
         linhas_afetadas = cursor.rowcount
         conexao.commit()
         cursor.close()
@@ -74,6 +91,28 @@ def atualizar_servico(servico_id: int, servico: NovoServico):
         return {"erro": f"Já existe um serviço chamado '{nome}'."}
     except Exception as erro:
         return {"erro": f"Erro ao atualizar serviço: {erro}"}
+
+@router.put("/servicos/{servico_id}/mensagem")
+def salvar_mensagem_modelo(servico_id: int, corpo: MensagemModelo):
+    """ Salva só a mensagem-modelo do serviço (usada pelo "Salvar como modelo"
+    da fila de hoje, que não tem nome/ciclo à mão pra mandar no PUT completo). """
+    mensagem = _limpar_mensagem_modelo(corpo.mensagem_modelo)
+    if mensagem and len(mensagem) > LIMITE_MENSAGEM_MODELO:
+        return {"erro": f"A mensagem pode ter no máximo {LIMITE_MENSAGEM_MODELO} caracteres."}
+
+    try:
+        conexao = conectar_banco()
+        cursor = conexao.cursor()
+        cursor.execute("UPDATE servicos SET mensagem_modelo = %s WHERE id = %s;", (mensagem, servico_id))
+        linhas_afetadas = cursor.rowcount
+        conexao.commit()
+        cursor.close()
+        conexao.close()
+
+        if linhas_afetadas == 0: return {"erro": "Serviço não encontrado."}
+        return {"mensagem": "Mensagem salva!", "mensagem_modelo": mensagem}
+    except Exception as erro:
+        return {"erro": f"Erro ao salvar a mensagem: {erro}"}
 
 @router.delete("/servicos/{servico_id}")
 def excluir_servico(servico_id: int):

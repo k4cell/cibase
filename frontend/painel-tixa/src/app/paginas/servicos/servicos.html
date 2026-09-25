@@ -57,6 +57,7 @@
       <div class="tx-servico-card-ciclo">
         {{ exibirCiclo(servico) }}
       </div>
+      <div class="tx-servico-card-msg" *ngIf="servico.mensagem_modelo" [title]="servico.mensagem_modelo">Mensagem própria</div>
       <div class="tx-servico-card-acoes">
         <button class="tx-servico-item-editar" (click)="iniciarEdicaoServico(servico)" title="Editar serviço">
           <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -88,6 +89,15 @@
               <option value="meses">Meses</option>
             </select>
           </div>
+        </div>
+        <div class="tx-field">
+          <label class="tx-field-label">Mensagem do WhatsApp (opcional)</label>
+          <textarea class="tx-fila-textarea" rows="3" maxlength="1000" [(ngModel)]="servicoEditandoMensagem"
+            placeholder="Oi, &#123;nome&#125;! Já está na hora do seu(sua) &#123;servico&#125;. Quer agendar?"></textarea>
+          <p class="tx-sale-hint" style="margin-top: 6px;">
+            Use &#123;nome&#125; para o primeiro nome do cliente e &#123;servico&#125; para o nome do serviço.
+            Deixe em branco para usar a mensagem padrão.
+          </p>
         </div>
         <div class="tx-servico-edicao-acoes">
           <button class="tx-btn tx-btn-secondary" (click)="cancelarEdicaoServico()">Cancelar</button>

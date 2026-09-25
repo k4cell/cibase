@@ -19,6 +19,11 @@ export class HojeComponent implements OnInit, OnDestroy {
   mostrarAdiados: boolean = false;
   itemParaExcluirDaFila: any = null;
 
+  // "Falar depois": cliente que respondeu "me procure mais tarde".
+  contatadoParaAdiar: any = null;
+  dataFalarDepois: string = '';
+  salvandoDesfecho: boolean = false;
+
   readonly formatarValor = formatarValor;
   readonly formatarData = formatarData;
 
@@ -55,6 +60,43 @@ export class HojeComponent implements OnInit, OnDestroy {
 
   classeStatus(status: string): string {
     return this.motorService.classeStatus(status);
+  }
+
+  // Data local (hoje + N dias) em aaaa-mm-dd, sem passar por UTC.
+  dataEmDias(dias: number): string {
+    const data = new Date();
+    data.setDate(data.getDate() + dias);
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${data.getFullYear()}-${mes}-${dia}`;
+  }
+
+  registrarRecusa(contatado: any) {
+    this.motorService.registrarDesfecho(contatado, 'recusou', null, () => this.cdr.detectChanges());
+  }
+
+  abrirFalarDepois(contatado: any) {
+    this.contatadoParaAdiar = contatado;
+    this.dataFalarDepois = this.dataEmDias(30);
+  }
+
+  fecharFalarDepois() {
+    this.contatadoParaAdiar = null;
+  }
+
+  confirmarFalarDepois() {
+    if (!this.contatadoParaAdiar) return;
+    if (!this.dataFalarDepois || this.dataFalarDepois <= this.dataEmDias(0)) {
+      this.toast.mostrar('Escolha uma data depois de hoje.', '#ffc107');
+      return;
+    }
+
+    this.salvandoDesfecho = true;
+    this.motorService.registrarDesfecho(this.contatadoParaAdiar, 'adiar_com_data', this.dataFalarDepois, (sucesso) => {
+      this.salvandoDesfecho = false;
+      if (sucesso) this.contatadoParaAdiar = null;
+      this.cdr.detectChanges();
+    });
   }
 
   // Clientes distintos -- a mesma pessoa contatada duas vezes (ou por dois

@@ -24,6 +24,7 @@ export class ServicosComponent implements OnInit, OnDestroy {
   servicoEditandoNome: string = '';
   servicoEditandoCiclo: number | null = null;
   servicoEditandoUnidade: 'dias' | 'meses' = 'dias';
+  servicoEditandoMensagem: string = '';
   salvandoEdicaoServico: boolean = false;
 
   servicoParaExcluir: any = null;
@@ -103,6 +104,7 @@ export class ServicosComponent implements OnInit, OnDestroy {
   iniciarEdicaoServico(servico: any) {
     this.servicoEditandoId = servico.id;
     this.servicoEditandoNome = servico.nome;
+    this.servicoEditandoMensagem = servico.mensagem_modelo || '';
     this.servicoEditandoUnidade = servico.unidade_ciclo === 'meses' ? 'meses' : 'dias';
     this.servicoEditandoCiclo = servico.dias_ciclo
       ? (this.servicoEditandoUnidade === 'meses' ? Math.round(servico.dias_ciclo / DIAS_POR_MES) : servico.dias_ciclo)
@@ -131,6 +133,7 @@ export class ServicosComponent implements OnInit, OnDestroy {
       this.servicoEditandoNome.trim(),
       diasCiclo,
       this.servicoEditandoUnidade,
+      this.servicoEditandoMensagem,
       () => {
         this.servicoEditandoId = null;
         // mudar o ciclo ou o nome reflete no status de cada cliente e na fila de hoje

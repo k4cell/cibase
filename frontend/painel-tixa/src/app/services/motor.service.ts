@@ -3,7 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../api.config';
 import { ToastService } from './toast.service';
 import { ClientesService } from './clientes.service';
+import { ServicosService } from './servicos.service';
 import { RefrescoService } from './refresco.service';
+import { formatarData } from '../utils/formatacao';
 
 // ==============================================================================
 // MOTOR DE RECOMENDAÇÃO -- consome o motor do backend (classificação por
@@ -31,6 +33,7 @@ export class MotorService {
     private http: HttpClient,
     private toast: ToastService,
     private clientesService: ClientesService,
+    private servicosService: ServicosService,
     private refresco: RefrescoService
   ) {
     // Mudou a carteira (importou planilha, registrou venda, arquivou...): a
@@ -85,8 +88,74 @@ export class MotorService {
       faixaValor: linha.faixa_valor,
       baixaConfianca: linha.baixa_confianca,
       motivo: this.motivoFila(linha),
-      mensagemDraft: this.mensagemSugeridaFila(cliente.nome, linha.status)
+      ...this.mensagemDaFila(cliente.nome, linha)
     };
+  }
+
+  // A mensagem do card: o modelo do serviço (se o dono salvou um) ou a padrão
+  // do status. `mensagemInicial` guarda o texto gerado pra tela saber se o
+  // dono editou (aí aparece "Salvar como modelo").
+  private mensagemDaFila(nomeCliente: string, linha: any) {
+    const modelo: string = (linha.mensagem_modelo || '').trim();
+    const texto = modelo
+      ? this.renderizarModelo(modelo, nomeCliente, linha.servico_nome)
+      : this.mensagemSugeridaFila(nomeCliente, linha.status);
+    return { mensagemDraft: texto, mensagemInicial: texto, temModelo: !!modelo };
+  }
+
+  private primeiroNome(nome: string): string {
+    return (nome || '').trim().split(/\s+/)[0] || nome;
+  }
+
+  // {nome} = primeiro nome do cliente, {servico} = nome do serviço.
+  private renderizarModelo(modelo: string, nomeCliente: string, servicoNome: string): string {
+    return modelo
+      .replace(/\{nome\}/gi, this.primeiroNome(nomeCliente))
+      .replace(/\{servico\}/gi, servicoNome);
+  }
+
+  // Caminho inverso: o dono editou o texto do card com o nome do cliente e do
+  // serviço "de verdade"; pra virar modelo, troca esses nomes de volta pelos
+  // marcadores (senão o modelo mandaria o nome do 1º cliente pra todo mundo).
+  private transformarEmModelo(texto: string, nomeCliente: string, servicoNome: string): string {
+    const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let modelo = texto.trim();
+    if (servicoNome) modelo = modelo.replace(new RegExp(escapar(servicoNome), 'giu'), '{servico}');
+    const primeiro = this.primeiroNome(nomeCliente);
+    if (primeiro) {
+      modelo = modelo.replace(new RegExp('(?<![\\p{L}\\p{N}])' + escapar(primeiro) + '(?![\\p{L}\\p{N}])', 'giu'), '{nome}');
+    }
+    return modelo;
+  }
+
+  salvarModeloDoServico(item: any) {
+    const modelo = this.transformarEmModelo(item.mensagemDraft, item.cliente.nome, item.servicoNome);
+    if (!modelo) { this.toast.mostrar('Escreva a mensagem antes de salvar como modelo.', '#ffc107'); return; }
+
+    this.http.put<any>(`${API_BASE_URL}/servicos/${item.servicoId}/mensagem`, { mensagem_modelo: modelo }).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) { this.toast.mostrar('Erro: ' + resposta.erro, '#dc3545'); return; }
+        const salvo: string = resposta.mensagem_modelo;
+
+        const servico = this.servicosService.servicos.find(s => s.id === item.servicoId);
+        if (servico) servico.mensagem_modelo = salvo;
+
+        // Este card e os outros do mesmo serviço que o dono não editou passam a usar o modelo já.
+        for (const outro of this.filaHoje) {
+          if (outro.servicoId !== item.servicoId) continue;
+          const semEdicao = outro === item || outro.mensagemDraft === outro.mensagemInicial;
+          outro.temModelo = true;
+          if (semEdicao) {
+            outro.mensagemInicial = this.renderizarModelo(salvo, outro.cliente.nome, outro.servicoNome);
+            outro.mensagemDraft = outro.mensagemInicial;
+          }
+        }
+
+        this.toast.mostrar(`Mensagem salva como modelo de ${item.servicoNome}. As próximas já saem assim.`, '#28a745');
+        this.refresco.notificar();
+      },
+      error: () => this.toast.mostrar('Falha ao salvar o modelo de mensagem.', '#dc3545')
+    });
   }
 
   // Classe de cor do badge de status do motor -- por gravidade (razão do
@@ -114,7 +183,8 @@ export class MotorService {
   // Adormecido / Recompra próxima / Frio) -- diferente da mensagemSugerida()
   // geral do ClientesService (usada na Ficha e nas tabelas), que continua
   // baseada no farol de risco configurável e não deve mudar.
-  private mensagemSugeridaFila(nome: string, status: string): string {
+  private mensagemSugeridaFila(nomeCompleto: string, status: string): string {
+    const nome = this.primeiroNome(nomeCompleto);
     if (status === 'Frio') {
       return `Olá, ${nome}! Faz bastante tempo que não nos vemos. Temos condições especiais pra você voltar, podemos conversar?`;
     } else if (status === 'Adormecido') {
@@ -153,7 +223,10 @@ export class MotorService {
   // documento) e recalcula a data de reentrada a partir de agora.
   contatarAdiado(item: any) {
     const cliente = this.clientesService.clientes.find(c => c.id === item.clienteId);
-    const mensagem = `Oi, ${item.clienteNome}! Tudo bem? Passando pra saber se podemos te ajudar com alguma coisa.`;
+    const modelo: string = (this.servicosService.servicos.find(s => s.id === item.servicoId)?.mensagem_modelo || '').trim();
+    const mensagem = modelo
+      ? this.renderizarModelo(modelo, item.clienteNome, item.servicoNome)
+      : `Oi, ${this.primeiroNome(item.clienteNome)}! Tudo bem? Passando pra saber se podemos te ajudar com alguma coisa.`;
     window.open(this.clientesService.linkWhatsApp(cliente?.telefone || '', mensagem), '_blank');
 
     const corpo = { cliente_id: item.clienteId, servico_id: item.servicoId, resultado: 'silencio' };
@@ -173,6 +246,58 @@ export class MotorService {
       },
       error: () => this.toast.mostrar('Falha ao registrar o contato.', '#dc3545')
     });
+  }
+
+  // Desfecho depois do envio (documento: só 2 desfechos pedem clique):
+  // "recusou" ou "me procure depois de <data>". Nenhum dos dois muda o status
+  // do cliente -- só quando a linha volta a poder aparecer na fila.
+  registrarDesfecho(contatado: any, resultado: 'recusou' | 'adiar_com_data', dataIso: string | null, aoTerminar: (sucesso: boolean) => void) {
+    const corpo: any = { cliente_id: contatado.cliente_id, servico_id: contatado.servico_id, resultado };
+    if (dataIso) corpo.data_reentrada_manual = dataIso;
+
+    this.http.post<any>(`${API_BASE_URL}/motor/contatos`, corpo).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) {
+          this.toast.mostrar('Erro: ' + resposta.erro, '#dc3545');
+          aoTerminar(false);
+          return;
+        }
+
+        let texto: string;
+        if (resultado === 'adiar_com_data') {
+          texto = `Combinado: ${contatado.cliente_nome} volta à fila em ${formatarData(dataIso as string)}.`;
+        } else if (resposta.vira_nao_contatar) {
+          texto = `${contatado.cliente_nome} recusou 3 vezes seguidas e foi marcado como "não contatar".`;
+        } else {
+          texto = `Anotado: ${contatado.cliente_nome} recusou. Só volta à fila depois de ${formatarData(resposta.data_reentrada)}.`;
+        }
+        this.toast.mostrar(texto, '#28a745');
+        aoTerminar(true);
+        this.recarregarListasDeContato();
+      },
+      error: () => {
+        this.toast.mostrar('Falha ao registrar o desfecho.', '#dc3545');
+        aoTerminar(false);
+      }
+    });
+  }
+
+  // "Desfazer é obrigatório" (documento): apaga só o desfecho e o envio volta
+  // a mostrar os botões.
+  desfazerDesfecho(contatado: any) {
+    this.http.delete<any>(`${API_BASE_URL}/motor/contatos/${contatado.desfecho_contato_id}`).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) { this.toast.mostrar('Erro: ' + resposta.erro, '#dc3545'); return; }
+        this.toast.mostrar('Desfeito.', '#28a745');
+        this.recarregarListasDeContato();
+      },
+      error: () => this.toast.mostrar('Falha ao desfazer.', '#dc3545')
+    });
+  }
+
+  private recarregarListasDeContato() {
+    this.carregarContatados();
+    this.montarFilaDeHoje();
   }
 
   // Cliente já comprou pelo menos um serviço (tem alguma linha de situação).

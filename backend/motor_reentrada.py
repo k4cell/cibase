@@ -67,6 +67,8 @@ def registrar_contato(
         raise ValueError(f"resultado inválido: {resultado}. Use um de {RESULTADOS_VALIDOS}.")
     if resultado == "adiar_com_data" and not data_reentrada_manual:
         raise ValueError("resultado 'adiar_com_data' exige data_reentrada_manual.")
+    if resultado == "adiar_com_data" and data_reentrada_manual <= hoje:
+        raise ValueError("A data de retorno precisa ser depois de hoje.")
 
     ciclo = _ciclo_esperado_da_linha(cliente_id, servico_id, cursor)
     data_reentrada = None
