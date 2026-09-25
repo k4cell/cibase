@@ -15,15 +15,23 @@ router = APIRouter(dependencies=[Depends(verificar_token)])
 # ==============================================================================
 @router.get("/motor/classificacao")
 def obter_classificacao():
-    """ Mostra o resultado do motor (ciclo esperado, razão, status, já com as
-    travas aplicadas) por cliente+serviço -- ainda sem ordenação/fila
-    (Fase 3), só pra conferir que as Fases 1 e 2 estão calculando certo. """
+    """ Situação de cada cliente+serviço (ciclo esperado, razão, status)
+    calculada SÓ pela última compra -- inclui os que estão "Ativo" (em dia).
+
+    De propósito NÃO aplica as travas de contato (sem telefone, contatado há
+    pouco, adiado, "não contatar"...): elas decidem quem entra na FILA de
+    hoje (/motor/fila), não em que pé o cliente está. Aplicar aqui fazia
+    todo mundo que uma trava barrava sumir daqui e aparecer como "Em dia" no
+    Painel de Recuperação -- ex: uma planilha sem coluna de telefone deixava
+    a base inteira "Em dia". Só cliente arquivado fica de fora. """
     try:
         conexao = conectar_banco()
         cursor = conexao.cursor()
 
         linhas = classificar_todos(cursor)
-        linhas = aplicar_travas(linhas, cursor)
+        cursor.execute("SELECT id FROM clientes WHERE ativo;")
+        ids_ativos = {linha[0] for linha in cursor.fetchall()}
+        linhas = [linha for linha in linhas if linha["cliente_id"] in ids_ativos]
 
         if linhas:
             ids_clientes = list({l["cliente_id"] for l in linhas})
@@ -125,15 +133,23 @@ def obter_adiados():
 def obter_contatados():
     """ Registro de quem já recebeu um clique em "Enviar" (resultado=
     'silencio' na tabela de contatos) -- mais recente primeiro. Alimenta a
-    sub-aba "Contatados" da página Hoje. Ainda não diferencia quem respondeu
-    ou não -- isso fica pra uma fase futura. """
+    sub-aba "Contatados" da página Hoje.
+
+    `reativado` = o cliente comprou o MESMO serviço da mensagem em data
+    estritamente posterior ao contato (a unidade do motor é cliente+serviço;
+    estritamente depois pra não contar uma venda que já existia no mesmo dia
+    do clique). `data_reativacao` é a primeira dessas compras. """
     try:
         conexao = conectar_banco()
         cursor = conexao.cursor()
         hoje = date.today()
 
         cursor.execute("""
-            SELECT c.cliente_id, c.servico_id, c.data_contato, cl.nome, s.nome
+            SELECT c.cliente_id, c.servico_id, c.data_contato, cl.nome, s.nome,
+                   (SELECT MIN(v.data_da_venda) FROM vendas v
+                     WHERE v.cliente_id = c.cliente_id
+                       AND v.servico_id = c.servico_id
+                       AND v.data_da_venda > c.data_contato) AS data_reativacao
             FROM contatos c
             JOIN clientes cl ON cl.id = c.cliente_id
             JOIN servicos s ON s.id = c.servico_id
@@ -149,8 +165,10 @@ def obter_contatados():
                 "servico_nome": servico_nome,
                 "data_contato": data_contato.isoformat(),
                 "dias_atras": (hoje - data_contato).days,
+                "reativado": data_reativacao is not None,
+                "data_reativacao": data_reativacao.isoformat() if data_reativacao else None,
             }
-            for cliente_id, servico_id, data_contato, cliente_nome, servico_nome in cursor.fetchall()
+            for cliente_id, servico_id, data_contato, cliente_nome, servico_nome, data_reativacao in cursor.fetchall()
         ]
 
         cursor.close()

@@ -20,11 +20,11 @@ export class MotorService {
   contatados: any[] = [];
   contatadosCarregados: boolean = false;
 
-  // Classificação "crua" do motor (todo cliente com pelo menos um serviço
-  // fora do Ativo, já sem quem está travado por contato), agrupada por
-  // cliente pra alimentar o badge "Perfil Comercial" do Painel de Recuperação.
-  // Por ora aceitamos que um cliente marcado "não contatar" apareça como "Em
-  // dia" mesmo se estiver atrasado -- resolver isso é trabalho futuro.
+  // Situação de cada cliente+serviço que já teve pelo menos uma compra,
+  // calculada SÓ pela última compra (backend: /motor/classificacao) e
+  // agrupada por cliente. Inclui os que estão em dia -- o status "Ativo" do
+  // motor chega aqui já com o nome "Em dia". Cliente sem NENHUMA linha aqui
+  // não tem histórico de compra (não é "Em dia": não dá pra saber).
   classificacaoPorCliente: { [clienteId: number]: any[] } = {};
 
   constructor(
@@ -32,7 +32,15 @@ export class MotorService {
     private toast: ToastService,
     private clientesService: ClientesService,
     private refresco: RefrescoService
-  ) {}
+  ) {
+    // Mudou a carteira (importou planilha, registrou venda, arquivou...): a
+    // classificação, a fila e os contatados dependem disso e ficariam velhos.
+    this.clientesService.aoMudarCarteira(() => {
+      this.carregarClassificacaoMotor();
+      this.montarFilaDeHoje();
+      if (this.contatadosCarregados) this.carregarContatados();
+    });
+  }
 
   montarFilaDeHoje() {
     this.carregarFilaMotor();
@@ -91,7 +99,8 @@ export class MotorService {
       'Atrasado': 'tx-status--atrasado',
       'Adormecido': 'tx-status--adormecido',
       'Frio': 'tx-status--frio',
-      'Em dia': 'tx-status--em-dia'
+      'Em dia': 'tx-status--em-dia',
+      'Sem histórico': 'tx-status--sem-historico'
     };
     return mapa[status] || '';
   }
@@ -159,12 +168,18 @@ export class MotorService {
   }
   // ^ notificar() já acontece via carregarAdiadosMotor() acima.
 
+  // Cliente já comprou pelo menos um serviço (tem alguma linha de situação).
+  temHistoricoDeCompra(clienteId: number): boolean {
+    return (this.classificacaoPorCliente[clienteId] || []).length > 0;
+  }
+
   // Perfil do cliente pro Painel de Recuperação: o serviço mais urgente dele
-  // (se tiver algum fora do Ativo) + quantos outros também estão em atraso.
-  // null = nenhum serviço fora do Ativo, ou seja, "Em dia".
+  // (se tiver algum fora do "Em dia") + quantos outros também estão em atraso.
+  // null = nenhum serviço pendente: ou está tudo em dia, ou não tem histórico
+  // (quem chama distingue os dois com temHistoricoDeCompra).
   perfilMotorCliente(clienteId: number): { servicoNome: string, status: string, extras: number } | null {
-    const linhas = this.classificacaoPorCliente[clienteId];
-    if (!linhas || linhas.length === 0) return null;
+    const linhas = (this.classificacaoPorCliente[clienteId] || []).filter(l => l.status !== 'Em dia');
+    if (linhas.length === 0) return null;
 
     const ordemGravidade = ['Frio', 'Adormecido', 'Atrasado', 'Recompra próxima'];
     const principal = [...linhas].sort(
@@ -181,7 +196,8 @@ export class MotorService {
         const mapa: { [clienteId: number]: any[] } = {};
         for (const linha of (dados.linhas || [])) {
           if (!mapa[linha.cliente_id]) mapa[linha.cliente_id] = [];
-          mapa[linha.cliente_id].push(linha);
+          // "Ativo" é o nome interno do motor; na tela é "Em dia".
+          mapa[linha.cliente_id].push({ ...linha, status: linha.status === 'Ativo' ? 'Em dia' : linha.status });
         }
         this.classificacaoPorCliente = mapa;
         this.refresco.notificar();

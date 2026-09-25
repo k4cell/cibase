@@ -36,7 +36,21 @@ def obter_estatisticas():
         cursor.execute("SELECT COALESCE(SUM(valor), 0) FROM vendas;")
         total_recuperado = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(DISTINCT cliente_id) FROM vendas;")
+        # Reativado de verdade = cliente que comprou o MESMO serviço depois de
+        # um contato registrado (Enviar). Antes contava qualquer cliente com
+        # pelo menos uma venda, o que não tinha relação nenhuma com contato --
+        # mesma regra do `reativado` de /motor/contatados.
+        cursor.execute("""
+            SELECT COUNT(DISTINCT c.cliente_id)
+            FROM contatos c
+            WHERE c.resultado = 'silencio'
+              AND EXISTS (
+                  SELECT 1 FROM vendas v
+                  WHERE v.cliente_id = c.cliente_id
+                    AND v.servico_id = c.servico_id
+                    AND v.data_da_venda > c.data_contato
+              );
+        """)
         clientes_reativados = cursor.fetchone()[0]
 
         cursor.close()

@@ -28,6 +28,22 @@ export function formatarData(data: string): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+// Mesma aproximação do motor (backend/motor_reentrada.py: DIAS_POR_MES = 30).
+// O frontend converte meses -> dias antes de enviar; dias_ciclo é sempre em
+// dias no banco e unidade_ciclo só guarda como reexibir o número.
+export const DIAS_POR_MES = 30;
+
+// "6 meses" / "1 mês" / "15 dias" -- o ciclo do jeito que foi digitado.
+// String vazia quando o serviço ainda não tem ciclo definido.
+export function formatarCiclo(servico: any): string {
+  if (!servico?.dias_ciclo) return '';
+  if (servico.unidade_ciclo === 'meses') {
+    const meses = Math.round(servico.dias_ciclo / DIAS_POR_MES);
+    return `${meses} ${meses === 1 ? 'mês' : 'meses'}`;
+  }
+  return `${servico.dias_ciclo} ${servico.dias_ciclo === 1 ? 'dia' : 'dias'}`;
+}
+
 export function exibirTextoDias(dataUltimaCompra: string): string {
   if (!dataUltimaCompra || dataUltimaCompra === 'Sem vendas') return 'Sem vendas';
 

@@ -5,7 +5,7 @@ import { MotorService } from '../../services/motor.service';
 import { EstatisticasService } from '../../services/estatisticas.service';
 import { ToastService } from '../../services/toast.service';
 import { RefrescoService } from '../../services/refresco.service';
-import { formatarValor } from '../../utils/formatacao';
+import { formatarValor, formatarData } from '../../utils/formatacao';
 import { ArrastarRolarDirective } from '../../utils/arrastar-rolar.directive';
 
 @Component({
@@ -20,6 +20,7 @@ export class HojeComponent implements OnInit, OnDestroy {
   itemParaExcluirDaFila: any = null;
 
   readonly formatarValor = formatarValor;
+  readonly formatarData = formatarData;
 
   private desregistrar!: () => void;
 
@@ -54,6 +55,13 @@ export class HojeComponent implements OnInit, OnDestroy {
 
   classeStatus(status: string): string {
     return this.motorService.classeStatus(status);
+  }
+
+  // Clientes distintos -- a mesma pessoa contatada duas vezes (ou por dois
+  // serviços) que voltou a comprar conta uma vez só.
+  clientesReativados(): number {
+    const ids = new Set(this.motorService.contatados.filter(c => c.reativado).map(c => c.cliente_id));
+    return ids.size;
   }
 
   // Outros serviços do MESMO cliente que também estão com recompra próxima --

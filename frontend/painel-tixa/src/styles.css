@@ -1065,6 +1065,52 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 
 .tx-subnav::-webkit-scrollbar { display: none; }
 
+.tx-contatado-status { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+
+/* Sub-abas + ação à direita (ex: botão Régua no Painel de Recuperação). */
+.tx-subnav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.tx-subnav-row .tx-subnav { margin-bottom: 0; }
+
+/* Painel de Recuperação > Por serviço: um card por serviço com a contagem de
+   clientes em cada status; clicar escolhe o serviço e mostra a tabela dele. */
+.tx-resumo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.tx-resumo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 18px 20px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--tx-surface);
+  border: 1px solid var(--tx-border);
+  border-radius: var(--tx-r-lg);
+  box-shadow: var(--tx-shadow-sm);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+.tx-resumo-card:hover { box-shadow: var(--tx-shadow-md); border-color: var(--tx-border-strong); }
+.tx-resumo-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--tx-primary-ring); }
+.tx-resumo-card.is-active { border-color: var(--tx-primary); background: var(--tx-primary-soft); }
+
+.tx-resumo-card-nome { font-size: 15px; font-weight: 700; letter-spacing: -0.015em; color: var(--tx-title); }
+.tx-resumo-card-ciclo { font-size: 12.5px; color: var(--tx-label); }
+.tx-resumo-card-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tx-resumo-card-vazio { margin-top: 8px; font-size: 12.5px; color: var(--tx-faint); }
+
 .tx-subnav-pill {
   padding: 8px 18px;
   font-family: var(--tx-font);
@@ -1128,6 +1174,7 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 .tx-filter-pill--success { color: var(--tx-success-ink); }
 .tx-filter-pill--info    { color: var(--tx-primary-text-soft); }
 .tx-filter-pill--orange  { color: var(--tx-orange-ink); }
+.tx-filter-pill--muted   { color: var(--tx-label); }
 
 .tx-filter-pill.is-active {
   background: var(--tx-surface);
@@ -1549,6 +1596,8 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 .tx-status--adormecido { background: var(--tx-orange-soft); color: var(--tx-orange-ink); border-color: transparent; }
 .tx-status--frio       { background: var(--tx-red-soft); color: var(--tx-danger-ink); border-color: transparent; }
 .tx-status--em-dia     { background: var(--tx-emerald-soft); color: var(--tx-emerald); border-color: transparent; }
+/* Sem nenhuma compra registrada: não é gravidade, é ausência de dado -- cinza neutro. */
+.tx-status--sem-historico { background: var(--tx-surface-alt); color: var(--tx-label); border-color: var(--tx-border); }
 
 .tx-perfil-motor-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 

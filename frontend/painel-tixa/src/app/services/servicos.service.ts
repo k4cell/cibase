@@ -17,6 +17,40 @@ export class ServicosService {
     });
   }
 
+  importarServicos(arquivo: File, aoTerminar: (sucesso: boolean) => void) {
+    const formData = new FormData();
+    formData.append('arquivo', arquivo);
+
+    this.http.post<any>(`${API_BASE_URL}/importar-servicos`, formData).subscribe({
+      next: (resposta) => {
+        if (resposta.erro) {
+          aoTerminar(false);
+          this.toast.mostrar(resposta.erro, '#dc3545');
+          this.refresco.notificar();
+          return;
+        }
+
+        const criados = resposta.servicos_criados || 0;
+        const atualizados = resposta.servicos_atualizados || 0;
+        const partes: string[] = [];
+        if (criados > 0) partes.push(criados === 1 ? '1 serviço cadastrado' : `${criados} serviços cadastrados`);
+        if (atualizados > 0) partes.push(atualizados === 1 ? '1 serviço com ciclo atualizado' : `${atualizados} serviços com ciclo atualizado`);
+
+        this.toast.mostrar(
+          partes.length > 0 ? partes.join('. ') + '.' : 'Nenhum serviço novo encontrado no arquivo.',
+          partes.length > 0 ? '#28a745' : '#ffc107'
+        );
+        this.carregarServicos();
+        aoTerminar(true);
+        this.refresco.notificar();
+      },
+      error: () => {
+        aoTerminar(false);
+        this.toast.mostrar('Falha ao importar a planilha de serviços.', '#dc3545');
+      }
+    });
+  }
+
   adicionarServico(nome: string, diasCiclo: number, unidadeCiclo: string, aoSalvar: () => void, aoFinalizar: () => void) {
     this.http.post<any>(`${API_BASE_URL}/servicos`, { nome, dias_ciclo: diasCiclo, unidade_ciclo: unidadeCiclo }).subscribe({
       next: (resposta) => {

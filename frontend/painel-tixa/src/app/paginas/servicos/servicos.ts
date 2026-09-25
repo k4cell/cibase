@@ -5,13 +5,7 @@ import { ServicosService } from '../../services/servicos.service';
 import { MotorService } from '../../services/motor.service';
 import { ToastService } from '../../services/toast.service';
 import { RefrescoService } from '../../services/refresco.service';
-
-// Mesma aproximação usada no motor (backend/motor_reentrada.py:
-// DIAS_POR_MES = 30) -- só pra converter o número digitado em "meses" pro
-// dias_ciclo que o resto do sistema entende. A unidade em si (unidade_ciclo)
-// é guardada só pra reexibir do jeito que foi digitado (mecânica pensa em
-// meses, manicure pensa em dias); o motor de recomendação nunca vê "meses".
-const DIAS_POR_MES = 30;
+import { DIAS_POR_MES, formatarCiclo } from '../../utils/formatacao';
 
 @Component({
   selector: 'app-servicos',
@@ -24,6 +18,7 @@ export class ServicosComponent implements OnInit, OnDestroy {
   novoServicoCiclo: number | null = null;
   novoServicoUnidade: 'dias' | 'meses' = 'dias';
   salvandoServico: boolean = false;
+  importandoServicos: boolean = false;
 
   servicoEditandoId: number | null = null;
   servicoEditandoNome: string = '';
@@ -56,12 +51,31 @@ export class ServicosComponent implements OnInit, OnDestroy {
   // (dividindo de volta por 30 se for "meses"), em vez de sempre mostrar em
   // dias -- é o texto que aparece já do jeito que o dono do negócio pensa.
   exibirCiclo(servico: any): string {
-    if (!servico.dias_ciclo) return 'Ciclo ainda não definido';
-    if (servico.unidade_ciclo === 'meses') {
-      const meses = Math.round(servico.dias_ciclo / DIAS_POR_MES);
-      return `${meses} ${meses === 1 ? 'mês' : 'meses'} de ciclo esperado`;
+    const ciclo = formatarCiclo(servico);
+    return ciclo ? `${ciclo} de ciclo esperado` : 'Ciclo ainda não definido';
+  }
+
+  importarServicos(event: any) {
+    const arquivo: File = event.target.files[0];
+    if (!arquivo) return;
+
+    const nomeArquivo = arquivo.name.toLowerCase();
+    if (!nomeArquivo.endsWith('.csv') && !nomeArquivo.endsWith('.xlsx')) {
+      this.toast.mostrar('Selecione um arquivo .csv ou .xlsx válido.', '#dc3545');
+      event.target.value = '';
+      return;
     }
-    return `${servico.dias_ciclo} ${servico.dias_ciclo === 1 ? 'dia' : 'dias'} de ciclo esperado`;
+
+    this.importandoServicos = true;
+    this.servicosService.importarServicos(arquivo, (sucesso) => {
+      this.importandoServicos = false;
+      event.target.value = '';
+      // Ciclo novo muda o status de quem já comprou o serviço e a fila de hoje.
+      if (sucesso) {
+        this.motorService.carregarClassificacaoMotor();
+        this.motorService.montarFilaDeHoje();
+      }
+    });
   }
 
   adicionarServico() {
@@ -119,7 +133,9 @@ export class ServicosComponent implements OnInit, OnDestroy {
       this.servicoEditandoUnidade,
       () => {
         this.servicoEditandoId = null;
-        this.motorService.montarFilaDeHoje(); // mudar o ciclo ou o nome reflete na fila de hoje
+        // mudar o ciclo ou o nome reflete no status de cada cliente e na fila de hoje
+        this.motorService.carregarClassificacaoMotor();
+        this.motorService.montarFilaDeHoje();
       },
       () => { this.salvandoEdicaoServico = false; }
     );

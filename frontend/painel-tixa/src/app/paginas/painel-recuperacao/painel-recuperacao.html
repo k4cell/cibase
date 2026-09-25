@@ -4,7 +4,7 @@
 </div>
 
 <!-- KPIs -->
-<div class="tx-kpi-grid">
+<div class="tx-kpi-grid tx-kpi-grid--compacta">
   <div class="tx-kpi-card tx-kpi-card--success">
     <div>
       <h3 class="tx-kpi-label">Receita Total Recuperada</h3>
@@ -29,25 +29,56 @@
       </svg>
     </div>
   </div>
-
-  <div class="tx-kpi-card tx-kpi-card--info">
-    <div>
-      <h3 class="tx-kpi-label">Clientes Reativados</h3>
-      <h2 class="tx-kpi-value">{{ estatisticasService.clientesReativados }}</h2>
-      <p class="tx-kpi-foot">Clientes que voltaram a comprar após contato</p>
-    </div>
-    <div class="tx-kpi-icon tx-kpi-icon--info">
-      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="m17 2 4 4-4 4"></path>
-        <path d="M3 11v-1a4 4 0 0 1 4-4h14"></path>
-        <path d="m7 22-4-4 4-4"></path>
-        <path d="M21 13v1a4 4 0 0 1-4 4H3"></path>
-      </svg>
-    </div>
-  </div>
 </div>
 
-<!-- BARRA DE AÇÕES -->
+<!-- SUB-NAVEGAÇÃO -->
+<div class="tx-subnav-row">
+  <div class="tx-subnav">
+    <button class="tx-subnav-pill" [class.is-active]="subAba === 'carteira'" (click)="trocarSubAba('carteira')">Carteira</button>
+    <button class="tx-subnav-pill" [class.is-active]="subAba === 'servico'" (click)="trocarSubAba('servico')">Situação por serviço</button>
+  </div>
+  <button class="tx-btn tx-btn-secondary" (click)="abrirModalRegua()" title="Ajustar a régua de relacionamento">
+      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      Régua
+    </button>
+</div>
+
+<!-- ABA: CARTEIRA -->
+<ng-container *ngIf="subAba === 'carteira'">
+  <ng-container *ngTemplateOutlet="blocoTabela"></ng-container>
+</ng-container>
+
+<!-- ABA: SITUAÇÃO POR SERVIÇO -->
+<ng-container *ngIf="subAba === 'servico'">
+  <div class="tx-resumo-grid" *ngIf="servicosService.servicos.length > 0">
+    <button
+      class="tx-resumo-card"
+      *ngFor="let resumo of resumoPorServico(); trackBy: trackPorServico"
+      [class.is-active]="servicoFiltroId === resumo.servico.id + ''"
+      (click)="selecionarServico(resumo.servico.id)"
+    >
+      <span class="tx-resumo-card-nome">{{ resumo.servico.nome }}</span>
+      <span class="tx-resumo-card-ciclo">{{ formatarCiclo(resumo.servico) ? 'Ciclo de ' + formatarCiclo(resumo.servico) : 'Ciclo não definido' }}</span>
+      <span class="tx-resumo-card-chips" *ngIf="resumo.contagens.length > 0; else semPendentes">
+        <span class="tx-badge" *ngFor="let c of resumo.contagens" [ngClass]="classeStatus(c.status)">{{ c.qtd }} {{ c.status }}</span>
+      </span>
+      <ng-template #semPendentes><span class="tx-resumo-card-vazio">Nenhuma compra registrada</span></ng-template>
+    </button>
+  </div>
+
+  <p class="tx-panel-note" *ngIf="servicosService.servicos.length === 0">Nenhum serviço cadastrado ainda.</p>
+  <p class="tx-panel-note" *ngIf="servicosService.servicos.length > 0 && !servicoSelecionado()">Escolha um serviço acima para ver a situação de cada cliente que já o comprou.</p>
+
+  <ng-container *ngIf="servicoSelecionado()">
+    <ng-container *ngTemplateOutlet="blocoTabela"></ng-container>
+  </ng-container>
+</ng-container>
+
+<!-- FILTROS DE STATUS + TABELA (compartilhados pelas duas abas) -->
+<ng-template #blocoTabela>
 <div class="tx-toolbar">
   <div class="tx-filter-group">
     <button class="tx-filter-pill tx-filter-pill--neutral" [class.is-active]="filtroAtual === 'Todos'" (click)="definirFiltro('Todos')">
@@ -68,69 +99,17 @@
     <button class="tx-filter-pill tx-filter-pill--danger" [class.is-active]="filtroAtual === 'Frio'" (click)="definirFiltro('Frio')">
       <span class="tx-dot"></span> Frio
     </button>
-  </div>
-
-  <div style="display:flex; align-items:center; gap:10px;">
-    <select class="tx-period-select" [(ngModel)]="servicoFiltroId">
-      <option value="todos">Todos os serviços</option>
-      <option *ngFor="let servico of servicosService.servicos" [value]="servico.id">{{ servico.nome }}</option>
-    </select>
-    <button class="tx-btn tx-btn-secondary" (click)="abrirModalRegua()" title="Ajustar a régua de relacionamento">
-      <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
-      </svg>
-      Régua
+    <button class="tx-filter-pill tx-filter-pill--muted" *ngIf="subAba === 'carteira'" [class.is-active]="filtroAtual === 'Sem histórico'" (click)="definirFiltro('Sem histórico')" title="Clientes que ainda não têm nenhuma compra registrada">
+      <span class="tx-dot"></span> Sem histórico
     </button>
   </div>
-</div>
 
-<!-- MODAL: Régua de Relacionamento -->
-<div *ngIf="mostrarModalRegua" class="tx-modal-backdrop">
-  <div class="tx-modal-card tx-modal-card--sm">
-    <div class="tx-modal-header">
-      <div class="tx-modal-header-icon">
-        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-          <circle cx="12" cy="12" r="3"></circle>
-        </svg>
-      </div>
-      <div>
-        <h3 class="tx-modal-title">Régua de Relacionamento</h3>
-        <p class="tx-modal-caption">Em quantos dias sem comprar um cliente muda de cor no painel.</p>
-      </div>
-    </div>
-
-    <div class="tx-sale-body">
-      <div class="tx-field">
-        <label class="tx-field-label" for="tx-regua-atencao">Dias até "Atenção" (amarelo)</label>
-        <input id="tx-regua-atencao" type="number" class="tx-input" min="1" [(ngModel)]="diasAtencaoEdicao">
-      </div>
-
-      <div class="tx-field" style="margin-top: 14px;">
-        <label class="tx-field-label" for="tx-regua-risco">Dias até "Risco Alto" (vermelho)</label>
-        <input id="tx-regua-risco" type="number" class="tx-input" min="1" [(ngModel)]="diasRiscoEdicao">
-      </div>
-
-      <p class="tx-sale-hint" style="margin-top: 12px;">
-        Cada negócio tem um ciclo diferente -- uma clínica de estética pode usar ~30 dias, um centro automotivo pode usar ~180.
-      </p>
-    </div>
-
-    <div class="tx-sale-footer">
-      <button class="tx-btn tx-btn-secondary" (click)="fecharModalRegua()" [disabled]="salvandoRegua">Cancelar</button>
-      <button class="tx-btn tx-btn-primary" (click)="salvarRegua()" [disabled]="salvandoRegua">
-        <span *ngIf="salvandoRegua" class="tx-spinner"></span>
-        {{ salvandoRegua ? 'Salvando...' : 'Salvar' }}
-      </button>
-    </div>
-  </div>
 </div>
 
 <!-- TABELA DE CLIENTES -->
 <div class="tx-table-card">
   <div class="tx-table-head">
-    <h2>Carteira de clientes</h2>
+    <h2>{{ subAba === 'servico' && servicoSelecionado() ? 'Clientes de ' + servicoSelecionado().nome : 'Carteira de clientes' }}</h2>
     <span class="tx-table-count">{{ obterClientesFiltrados().length }} registro(s)</span>
   </div>
 
@@ -227,5 +206,48 @@
         </tr>
       </tbody>
     </table>
+  </div>
+</div>
+</ng-template>
+
+<!-- MODAL: Régua de Relacionamento -->
+<div *ngIf="mostrarModalRegua" class="tx-modal-backdrop">
+  <div class="tx-modal-card tx-modal-card--sm">
+    <div class="tx-modal-header">
+      <div class="tx-modal-header-icon">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </div>
+      <div>
+        <h3 class="tx-modal-title">Régua de Relacionamento</h3>
+        <p class="tx-modal-caption">Em quantos dias sem comprar um cliente muda de cor no painel.</p>
+      </div>
+    </div>
+
+    <div class="tx-sale-body">
+      <div class="tx-field">
+        <label class="tx-field-label" for="tx-regua-atencao">Dias até "Atenção" (amarelo)</label>
+        <input id="tx-regua-atencao" type="number" class="tx-input" min="1" [(ngModel)]="diasAtencaoEdicao">
+      </div>
+
+      <div class="tx-field" style="margin-top: 14px;">
+        <label class="tx-field-label" for="tx-regua-risco">Dias até "Risco Alto" (vermelho)</label>
+        <input id="tx-regua-risco" type="number" class="tx-input" min="1" [(ngModel)]="diasRiscoEdicao">
+      </div>
+
+      <p class="tx-sale-hint" style="margin-top: 12px;">
+        Cada negócio tem um ciclo diferente -- uma clínica de estética pode usar ~30 dias, um centro automotivo pode usar ~180.
+      </p>
+    </div>
+
+    <div class="tx-sale-footer">
+      <button class="tx-btn tx-btn-secondary" (click)="fecharModalRegua()" [disabled]="salvandoRegua">Cancelar</button>
+      <button class="tx-btn tx-btn-primary" (click)="salvarRegua()" [disabled]="salvandoRegua">
+        <span *ngIf="salvandoRegua" class="tx-spinner"></span>
+        {{ salvandoRegua ? 'Salvando...' : 'Salvar' }}
+      </button>
+    </div>
   </div>
 </div>

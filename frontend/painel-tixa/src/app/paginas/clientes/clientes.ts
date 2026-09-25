@@ -81,7 +81,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
       this.importandoVendas = false;
       event.target.value = '';
       if (sucesso) {
-        this.clientesService.carregarClientes();
+        this.clientesService.recarregarAposMudanca();
         this.estatisticasService.carregarEstatisticas();
         this.estatisticasService.carregarReceitaMensal();
         this.estatisticasService.carregarClientesPeriodo();

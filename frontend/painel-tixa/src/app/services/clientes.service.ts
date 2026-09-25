@@ -6,6 +6,7 @@ import { TemaService } from './tema.service';
 import { VendasService } from './vendas.service';
 import { EstatisticasService } from './estatisticas.service';
 import { RefrescoService } from './refresco.service';
+import { ServicosService } from './servicos.service';
 
 @Injectable({ providedIn: 'root' })
 export class ClientesService {
@@ -48,7 +49,8 @@ export class ClientesService {
     private tema: TemaService,
     private vendasService: VendasService,
     private estatisticasService: EstatisticasService,
-    private refresco: RefrescoService
+    private refresco: RefrescoService,
+    private servicosService: ServicosService
   ) {}
 
   carregarClientes(aoTerminar?: () => void) {
@@ -60,6 +62,25 @@ export class ClientesService {
       },
       error: () => this.toast.mostrar('Falha ao conectar com o banco de clientes.', '#dc3545')
     });
+  }
+
+  // Quem precisa reagir a uma mudança na carteira (o motor: classificação,
+  // fila, contatados) se registra aqui -- o ClientesService não conhece o
+  // MotorService (o Motor já depende dele; importar de volta seria um ciclo).
+  private ouvintesMudanca = new Set<() => void>();
+
+  aoMudarCarteira(fn: () => void) {
+    this.ouvintesMudanca.add(fn);
+  }
+
+  // Importou planilha, cadastrou/arquivou cliente, registrou venda...: recarrega
+  // clientes E o que depende deles. Sem isso a classificação ("Status do
+  // Serviço") ficava com a foto de ANTES da mudança e todo cliente novo
+  // aparecia como "Em dia" até dar F5. Os ouvintes só rodam DEPOIS que a
+  // lista de clientes chegou, porque montar a fila precisa dela.
+  recarregarAposMudanca() {
+    this.servicosService.carregarServicos();
+    this.carregarClientes(() => this.ouvintesMudanca.forEach(fn => fn()));
   }
 
   carregarClientesArquivados() {
@@ -80,7 +101,7 @@ export class ClientesService {
             this.toast.mostrar('Atenção: ' + resposta.erro, '#ffc107');
           } else {
             this.toast.mostrar('Cliente atualizado com sucesso!', '#28a745');
-            this.carregarClientes();
+            this.recarregarAposMudanca();
             aoTerminar(true);
           }
           this.refresco.notificar();
@@ -98,7 +119,7 @@ export class ClientesService {
             this.toast.mostrar('Atenção: ' + resposta.erro, '#ffc107');
           } else {
             this.toast.mostrar('Cliente cadastrado com sucesso!', '#28a745');
-            this.carregarClientes();
+            this.recarregarAposMudanca();
             aoTerminar(true);
           }
           this.refresco.notificar();
@@ -119,7 +140,7 @@ export class ClientesService {
           this.toast.mostrar('Atenção: ' + resposta.erro, '#ffc107');
         } else {
           this.toast.mostrar('Cliente arquivado com sucesso!', '#28a745');
-          this.carregarClientes();
+          this.recarregarAposMudanca();
           this.carregarClientesArquivados();
         }
         this.refresco.notificar();
@@ -138,7 +159,7 @@ export class ClientesService {
           this.toast.mostrar('Atenção: ' + resposta.erro, '#ffc107');
         } else {
           this.toast.mostrar('Cliente reativado com sucesso!', '#28a745');
-          this.carregarClientes();
+          this.recarregarAposMudanca();
           this.carregarClientesArquivados();
         }
         this.refresco.notificar();
@@ -195,20 +216,24 @@ export class ClientesService {
         const nomesDuplicados = resposta.clientes_ignorados_por_nome_duplicado || 0;
         const vendasInseridas = resposta.vendas_inseridas || 0;
         const vendasSemCliente = resposta.vendas_ignoradas_sem_cliente_correspondente || 0;
+        const servicosCriados = resposta.servicos_criados || 0;
+        const servicosAtualizados = resposta.servicos_atualizados || 0;
 
         const partes: string[] = [];
         if (inseridos > 0) partes.push(inseridos === 1 ? '1 cliente novo cadastrado' : `${inseridos} clientes novos cadastrados`);
+        if (servicosCriados > 0) partes.push(servicosCriados === 1 ? '1 serviço cadastrado' : `${servicosCriados} serviços cadastrados`);
+        if (servicosAtualizados > 0) partes.push(servicosAtualizados === 1 ? '1 serviço com ciclo atualizado' : `${servicosAtualizados} serviços com ciclo atualizado`);
         if (duplicados > 0) partes.push(duplicados === 1 ? '1 já estava cadastrado (CPF repetido)' : `${duplicados} já estavam cadastrados (CPF repetido)`);
         if (nomesDuplicados > 0) partes.push(nomesDuplicados === 1 ? '1 ignorado (já existe um cliente com esse nome)' : `${nomesDuplicados} ignorados (já existe um cliente com esse nome)`);
         if (incompletos > 0) partes.push(incompletos === 1 ? '1 linha ignorada por dados incompletos' : `${incompletos} linhas ignoradas por dados incompletos`);
         if (vendasInseridas > 0) partes.push(vendasInseridas === 1 ? '1 venda importada' : `${vendasInseridas} vendas importadas`);
         if (vendasSemCliente > 0) partes.push(vendasSemCliente === 1 ? '1 venda ignorada (CPF não encontrado)' : `${vendasSemCliente} vendas ignoradas (CPF não encontrado)`);
 
-        const mensagem = partes.length > 0 ? partes.join('. ') + '.' : 'Nenhum cliente encontrado no arquivo.';
-        const cor = (inseridos > 0 || vendasInseridas > 0) ? '#28a745' : '#ffc107';
+        const mensagem = partes.length > 0 ? partes.join('. ') + '.' : 'Nada novo encontrado no arquivo.';
+        const cor = (inseridos > 0 || vendasInseridas > 0 || servicosCriados > 0 || servicosAtualizados > 0) ? '#28a745' : '#ffc107';
 
         this.toast.mostrar(mensagem, cor);
-        this.carregarClientes();
+        this.recarregarAposMudanca();
         this.estatisticasService.carregarEstatisticas();
         this.estatisticasService.carregarReceitaMensal();
         this.estatisticasService.carregarClientesPeriodo();
@@ -422,7 +447,7 @@ export class ClientesService {
     };
 
     this.fecharModalVenda();
-    this.vendasService.salvarVenda(dadosVenda, () => this.carregarClientes());
+    this.vendasService.salvarVenda(dadosVenda, () => this.recarregarAposMudanca());
   }
 
   abrirConfirmacaoArquivar(cliente: any) {

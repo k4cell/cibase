@@ -4,6 +4,18 @@
     Cada serviço tem seu próprio ciclo de recompra esperado — o mesmo cliente pode
     estar atrasado na revisão e em dia na manutenção ao mesmo tempo.
   </p>
+  <div style="margin-top: 14px;">
+    <input type="file" id="tx-servicos-input" accept=".csv,.xlsx" style="display:none" (change)="importarServicos($event)" [disabled]="importandoServicos">
+    <label for="tx-servicos-input" class="tx-btn tx-btn-secondary" title="Cadastra os serviços de qualquer planilha (catálogo com ciclos ou vendas)" [style.opacity]="importandoServicos ? 0.6 : 1" [style.pointer-events]="importandoServicos ? 'none' : 'auto'">
+      <span *ngIf="importandoServicos" class="tx-spinner"></span>
+      <svg *ngIf="!importandoServicos" class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </svg>
+      {{ importandoServicos ? 'Importando...' : 'Importar Planilha' }}
+    </label>
+  </div>
 </div>
 
 <div class="tx-panel" style="max-width: 560px;">

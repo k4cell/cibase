@@ -127,7 +127,36 @@
 <!-- SUB-ABA: CONTATADOS -->
 <div *ngIf="subAbaHoje === 'contatados'">
 
-  <p class="tx-panel-note" style="margin-bottom: 14px;">Todo cliente que já recebeu um clique em "Enviar" aparece aqui — ainda sem marcar quem respondeu.</p>
+  <div class="tx-kpi-grid tx-kpi-grid--compacta">
+    <div class="tx-kpi-card tx-kpi-card--info">
+      <div>
+        <h3 class="tx-kpi-label">Contatados</h3>
+        <h2 class="tx-kpi-value">{{ motorService.contatados.length }}</h2>
+        <p class="tx-kpi-foot">Mensagens enviadas pela fila</p>
+      </div>
+      <div class="tx-kpi-icon tx-kpi-icon--info">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+        </svg>
+      </div>
+    </div>
+
+    <div class="tx-kpi-card tx-kpi-card--success">
+      <div>
+        <h3 class="tx-kpi-label">Clientes reativados</h3>
+        <h2 class="tx-kpi-value">{{ clientesReativados() }}</h2>
+        <p class="tx-kpi-foot">Compraram o mesmo serviço depois do contato</p>
+      </div>
+      <div class="tx-kpi-icon tx-kpi-icon--success">
+        <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m17 2 4 4-4 4"></path>
+          <path d="M3 11v-1a4 4 0 0 1 4-4h14"></path>
+          <path d="m7 22-4-4 4-4"></path>
+          <path d="M21 13v1a4 4 0 0 1-4 4H3"></path>
+        </svg>
+      </div>
+    </div>
+  </div>
 
   <div class="tx-adiados-lista" *ngIf="motorService.contatados.length > 0">
     <div class="tx-adiados-item" *ngFor="let item of motorService.contatados">
@@ -138,7 +167,10 @@
           <div class="tx-fila-subtitulo">{{ item.servico_nome }}</div>
         </div>
       </div>
-      <span class="tx-toolbar-info">{{ item.dias_atras === 0 ? 'Enviado hoje' : 'Enviado há ' + item.dias_atras + ' dia(s)' }}</span>
+      <div class="tx-contatado-status">
+        <span class="tx-toolbar-info">{{ item.dias_atras === 0 ? 'Enviado hoje' : 'Enviado há ' + item.dias_atras + ' dia(s)' }}</span>
+        <span class="tx-badge tx-status--em-dia" *ngIf="item.reativado">Voltou a comprar em {{ formatarData(item.data_reativacao) }}</span>
+      </div>
     </div>
   </div>
   <p class="tx-panel-note" *ngIf="motorService.contatados.length === 0">Ninguém foi contatado ainda.</p>
