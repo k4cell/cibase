@@ -216,6 +216,7 @@ export class ClientesService {
         const nomesDuplicados = resposta.clientes_ignorados_por_nome_duplicado || 0;
         const vendasInseridas = resposta.vendas_inseridas || 0;
         const vendasSemCliente = resposta.vendas_ignoradas_sem_cliente_correspondente || 0;
+        const vendasJaCadastradas = resposta.vendas_ignoradas_por_duplicidade || 0;
         const servicosCriados = resposta.servicos_criados || 0;
         const servicosAtualizados = resposta.servicos_atualizados || 0;
 
@@ -223,10 +224,11 @@ export class ClientesService {
         if (inseridos > 0) partes.push(inseridos === 1 ? '1 cliente novo cadastrado' : `${inseridos} clientes novos cadastrados`);
         if (servicosCriados > 0) partes.push(servicosCriados === 1 ? '1 serviço cadastrado' : `${servicosCriados} serviços cadastrados`);
         if (servicosAtualizados > 0) partes.push(servicosAtualizados === 1 ? '1 serviço com ciclo atualizado' : `${servicosAtualizados} serviços com ciclo atualizado`);
-        if (duplicados > 0) partes.push(duplicados === 1 ? '1 já estava cadastrado (CPF repetido)' : `${duplicados} já estavam cadastrados (CPF repetido)`);
+        if (duplicados > 0) partes.push(duplicados === 1 ? '1 cliente já estava cadastrado (mesmo CPF)' : `${duplicados} clientes já estavam cadastrados (mesmo CPF)`);
         if (nomesDuplicados > 0) partes.push(nomesDuplicados === 1 ? '1 ignorado (já existe um cliente com esse nome)' : `${nomesDuplicados} ignorados (já existe um cliente com esse nome)`);
         if (incompletos > 0) partes.push(incompletos === 1 ? '1 linha ignorada por dados incompletos' : `${incompletos} linhas ignoradas por dados incompletos`);
         if (vendasInseridas > 0) partes.push(vendasInseridas === 1 ? '1 venda importada' : `${vendasInseridas} vendas importadas`);
+        if (vendasJaCadastradas > 0) partes.push(vendasJaCadastradas === 1 ? '1 venda já estava cadastrada' : `${vendasJaCadastradas} vendas já estavam cadastradas`);
         if (vendasSemCliente > 0) partes.push(vendasSemCliente === 1 ? '1 venda ignorada (CPF não encontrado)' : `${vendasSemCliente} vendas ignoradas (CPF não encontrado)`);
 
         const mensagem = partes.length > 0 ? partes.join('. ') + '.' : 'Nada novo encontrado no arquivo.';

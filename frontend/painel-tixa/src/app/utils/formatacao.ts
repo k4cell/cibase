@@ -44,6 +44,20 @@ export function formatarCiclo(servico: any): string {
   return `${servico.dias_ciclo} ${servico.dias_ciclo === 1 ? 'dia' : 'dias'}`;
 }
 
+// Cada serviço tem sempre a mesma cor (pelo id), em qualquer tela -- pra bater o
+// olho e saber de qual serviço se trata. São 6 cores fixas, escolhidas pra não
+// se confundir com as cores de status (verde/amarelo/laranja/vermelho/azul);
+// passando de 6 serviços elas se repetem.
+export function classeCorServico(servicoId: number): string {
+  return 'tx-svc-' + (Math.abs(servicoId || 0) % 6);
+}
+
+// Faixa de valor do cliente (Alto/Médio/Baixo) -> classe de cor do selo.
+export function classeFaixaValor(faixa: string): string {
+  const mapa: { [faixa: string]: string } = { 'Alto': 'tx-faixa--alto', 'Médio': 'tx-faixa--medio', 'Baixo': 'tx-faixa--baixo' };
+  return mapa[faixa] || 'tx-faixa--medio';
+}
+
 export function exibirTextoDias(dataUltimaCompra: string): string {
   if (!dataUltimaCompra || dataUltimaCompra === 'Sem vendas') return 'Sem vendas';
 

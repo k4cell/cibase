@@ -1192,6 +1192,7 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 .tx-subnav::-webkit-scrollbar { display: none; }
 
 .tx-contatado-status { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.tx-contatado-quando { font-size: 13.5px; font-weight: 700; color: var(--tx-title); }
 
 /* Sub-abas + ação à direita (ex: botão Régua no Painel de Recuperação). */
 .tx-subnav-row {
@@ -1581,6 +1582,7 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   padding: 14px 16px;
   background: var(--tx-surface);
   border: 1px solid var(--tx-border);
+  border-left: 5px solid var(--tx-svc, var(--tx-border));
   border-radius: var(--tx-r-lg);
   box-shadow: var(--tx-shadow-sm);
   transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
@@ -1592,14 +1594,19 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 }
 
 .tx-servico-card-nome {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--tx-title);
 }
 
 .tx-servico-card-ciclo {
-  font-size: 12.5px;
-  color: var(--tx-label);
+  font-size: 13.5px;
+  color: var(--tx-body);
+}
+.tx-servico-card-ciclo strong {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--tx-svc, var(--tx-primary)) 62%, var(--tx-title));
 }
 
 .tx-servico-card-acoes {
@@ -1790,10 +1797,15 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
 }
 
 .tx-fila-subtitulo {
-  margin-top: 2px;
-  font-size: 12.5px;
-  color: var(--tx-label);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--tx-body);
 }
+.tx-fila-subtitulo strong { font-weight: 700; }
 
 .tx-fila-recusar {
   display: flex;
@@ -1817,18 +1829,52 @@ button.tx-brand-lockup:hover .tx-brand-name { color: var(--tx-primary); }
   flex-wrap: wrap;
   gap: 6px;
 }
-.tx-fila-chips .tx-badge {
+/* Selos neutros (ex: "Estimativa") -- os demais selos da fila trazem a própria cor. */
+.tx-badge--neutro {
   color: var(--tx-body);
   background: var(--tx-surface-alt);
 }
 
+/* Cor de cada SERVIÇO (mesma em Atividades e Serviços): a cor vem de --tx-svc,
+   definida por .tx-svc-N. Texto e fundo são misturados com as cores do tema, então
+   funcionam no claro e no escuro. */
+.tx-svc-0 { --tx-svc: #8b5cf6; }
+.tx-svc-1 { --tx-svc: #14b8a6; }
+.tx-svc-2 { --tx-svc: #ec4899; }
+.tx-svc-3 { --tx-svc: #6366f1; }
+.tx-svc-4 { --tx-svc: #06b6d4; }
+.tx-svc-5 { --tx-svc: #84cc16; }
+
+.tx-chip-servico {
+  color: color-mix(in srgb, var(--tx-svc) 62%, var(--tx-title));
+  background: color-mix(in srgb, var(--tx-svc) 16%, transparent);
+  border-color: color-mix(in srgb, var(--tx-svc) 42%, transparent);
+}
+.tx-chip-servico--pequeno { padding: 2px 9px; font-size: 11.5px; }
+
+/* Faixa de valor do cliente. */
+.tx-faixa--alto  { color: var(--tx-success-ink); background: var(--tx-emerald-soft); border-color: transparent; }
+.tx-faixa--medio { color: var(--tx-body); background: var(--tx-surface-alt); }
+.tx-faixa--baixo { color: var(--tx-label); background: var(--tx-surface-alt); }
+
+/* Números em destaque no texto: dinheiro em verde, tempo na cor do status. */
+.tx-valor-positivo { color: var(--tx-success-ink); font-weight: 700; }
+.tx-texto--recompra   { color: var(--tx-info-ink); font-weight: 700; }
+.tx-texto--atrasado   { color: var(--tx-warning-ink); font-weight: 700; }
+.tx-texto--adormecido { color: var(--tx-orange-ink); font-weight: 700; }
+.tx-texto--frio       { color: var(--tx-danger-ink); font-weight: 700; }
+.tx-texto--em-dia     { color: var(--tx-success-ink); font-weight: 700; }
+
 .tx-fila-motivo {
   padding: 10px 12px;
-  font-size: 13.5px;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--tx-body);
   background: var(--tx-surface-alt);
   border-radius: var(--tx-r-sm);
 }
+.tx-fila-motivo strong { font-weight: 700; }
+.tx-fila-motivo strong:not([class*="tx-texto--"]) { color: var(--tx-title); }
 
 .tx-fila-recompra-aviso {
   display: flex;

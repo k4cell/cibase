@@ -2,9 +2,12 @@ import csv
 import io
 import re
 import unicodedata
+from collections import Counter
+from decimal import Decimal
 
 import openpyxl
 from fastapi import APIRouter, Depends, UploadFile, File
+from psycopg2.extras import execute_values
 
 from auth import verificar_token
 from database import conectar_banco
@@ -383,15 +386,83 @@ def _resolver_servico_id(nome_servico: str, cursor, cache: dict) -> int | None:
     cache[chave] = novo_id
     return novo_id
 
-def _processar_linhas_vendas(linhas, cursor):
-    """ Insere vendas casando cada linha com um cliente já cadastrado pelo CPF.
-    A coluna "Serviço" é opcional -- quando presente, casa (ou cria) no
+def _importar_clientes(linhas, cursor):
+    """ Cadastra os clientes de uma aba EM LOTE (poucas idas ao banco, não uma por
+    linha -- num banco remoto, 1000 linhas de venda demoravam minutos). Retorna
+    (contadores, cpf_para_id), onde cpf_para_id casa CPF -> id de todo cliente da
+    planilha (novo ou já existente), pra importar as vendas em seguida.
+
+    Planilha com uma linha por COMPRA repete o mesmo cliente várias vezes: o
+    cliente conta uma vez só (a 1ª ocorrência), não como "duplicado". Duplicado =
+    CPF que já estava cadastrado antes da importação. """
+    incompletos = 0
+    candidatos: dict = {}   # cpf -> (nome, telefone, email, data_nasc), 1ª ocorrência vence
+
+    for linha in linhas:
+        nome = _texto_de_celula(linha.get("nome"))
+        # Telefone é importante pro resto do sistema (é como o WhatsApp é
+        # aberto), mas não trava a importação -- vira "Não informado" na
+        # ausência, igual já acontece com CPF/e-mail/nascimento na leitura.
+        telefone = _texto_de_celula(linha.get("telefone")) or "Não informado"
+        cpf = _normalizar_cpf(_texto_de_celula(linha.get("cpf")))
+
+        if not nome or not cpf:
+            incompletos += 1
+            continue
+        if cpf not in candidatos:
+            candidatos[cpf] = (nome, telefone, _texto_de_celula(linha.get("email")), _data_de_celula(linha.get("data_nascimento")))
+
+    cpf_para_id: dict = {}
+    if candidatos:
+        # CPF é o identificador de verdade (documento único por pessoa) --
+        # nome NÃO é (duas pessoas reais diferentes podem se chamar
+        # "Carlos Souza"), então dedup por CPF é o certo aqui.
+        cursor.execute("SELECT cpf, id FROM clientes WHERE cpf = ANY(%s);", (list(candidatos),))
+        cpf_para_id = dict(cursor.fetchall())
+    ja_existiam = len(cpf_para_id)
+
+    novos = [(cpf, *dados) for cpf, dados in candidatos.items() if cpf not in cpf_para_id]
+    inseridos = 0
+    if novos:
+        # A tabela também tem um índice único em LOWER(nome) (idx_clientes_nome_unico):
+        # outra pessoa com o mesmo nome (CPF diferente) esbarra nele. ON CONFLICT
+        # DO NOTHING pula só essa linha sem derrubar o lote inteiro; o que não
+        # voltar no RETURNING é o que foi barrado.
+        retornados = execute_values(
+            cursor,
+            "INSERT INTO clientes (nome, telefone, cpf, email, data_nascimento) VALUES %s "
+            "ON CONFLICT DO NOTHING RETURNING id, cpf;",
+            [(nome, telefone, cpf, email, data_nasc) for cpf, nome, telefone, email, data_nasc in novos],
+            page_size=500,
+            fetch=True,
+        )
+        for id_, cpf in retornados:
+            cpf_para_id[cpf] = id_
+        inseridos = len(retornados)
+
+    contadores = {
+        "clientes_inseridos": inseridos,
+        "clientes_ignorados_por_duplicidade": ja_existiam,
+        "clientes_ignorados_por_dados_incompletos": incompletos,
+        "clientes_ignorados_por_nome_duplicado": len(novos) - inseridos,
+    }
+    return contadores, cpf_para_id
+
+
+def _processar_linhas_vendas(linhas, cursor, cpf_para_id=None):
+    """ Insere vendas EM LOTE, casando cada linha com um cliente já cadastrado
+    pelo CPF. A coluna "Serviço" é opcional -- quando presente, casa (ou cria) no
     catálogo de serviços; ausente, a venda fica sem serviço (servico_id nulo).
-    Retorna (vendas_inseridas, sem_cliente_correspondente, dados_invalidos). """
-    inseridas = 0
+
+    Importar a mesma planilha de novo NÃO duplica: uma venda só entra se o banco
+    ainda não tem uma igual (mesmo cliente, serviço, valor e data). É por
+    contagem, então duas compras realmente idênticas no mesmo dia continuam
+    valendo as duas. Retorna
+    (vendas_inseridas, sem_cliente_correspondente, dados_invalidos, ja_cadastradas). """
     sem_cliente = 0
     invalidas = 0
     cache_servicos: dict = {}
+    validas = []   # (cpf, valor, data, nome_do_servico)
 
     for linha in linhas:
         cpf = _normalizar_cpf(_texto_de_celula(linha.get("cpf")))
@@ -401,22 +472,56 @@ def _processar_linhas_vendas(linhas, cursor):
         if not cpf or valor is None or not data_venda:
             invalidas += 1
             continue
+        validas.append((cpf, valor, data_venda, _texto_de_celula(linha.get("servico"))))
 
-        cursor.execute("SELECT id FROM clientes WHERE cpf = %s;", (cpf,))
-        cliente = cursor.fetchone()
-        if not cliente:
+    # Mapa CPF -> id: usa o que já veio pronto e busca no banco só os CPFs que faltam.
+    cpf_para_id = dict(cpf_para_id or {})
+    faltando = list({v[0] for v in validas} - set(cpf_para_id))
+    if faltando:
+        cursor.execute("SELECT cpf, id FROM clientes WHERE cpf = ANY(%s);", (faltando,))
+        cpf_para_id.update(dict(cursor.fetchall()))
+
+    a_inserir = []   # (cliente_id, valor, servico_id, data)
+    for cpf, valor, data_venda, nome_servico in validas:
+        cliente_id = cpf_para_id.get(cpf)
+        if cliente_id is None:
             sem_cliente += 1
             continue
+        a_inserir.append((cliente_id, valor, _resolver_servico_id(nome_servico, cursor, cache_servicos), data_venda))
 
-        servico_id = _resolver_servico_id(_texto_de_celula(linha.get("servico")), cursor, cache_servicos)
+    def chave(cliente_id, servico_id, valor, data):
+        return (cliente_id, servico_id, Decimal(str(valor)).quantize(Decimal("0.01")), str(data)[:10])
 
-        cursor.execute(
-            "INSERT INTO vendas (cliente_id, valor, servico_id, data_da_venda) VALUES (%s, %s, %s, %s);",
-            (cliente[0], valor, servico_id, data_venda)
+    existentes: Counter = Counter()
+    ids_clientes = list({v[0] for v in a_inserir})
+    if ids_clientes:
+        cursor.execute("""
+            SELECT cliente_id, servico_id, valor, data_da_venda, COUNT(*)
+            FROM vendas WHERE cliente_id = ANY(%s)
+            GROUP BY cliente_id, servico_id, valor, data_da_venda;
+        """, (ids_clientes,))
+        for cliente_id, servico_id, valor, data, qtd in cursor.fetchall():
+            existentes[chave(cliente_id, servico_id, valor, data)] += qtd
+
+    novas = []
+    ja_cadastradas = 0
+    for cliente_id, valor, servico_id, data in a_inserir:
+        k = chave(cliente_id, servico_id, valor, data)
+        if existentes[k] > 0:
+            existentes[k] -= 1
+            ja_cadastradas += 1
+        else:
+            novas.append((cliente_id, valor, servico_id, data))
+
+    if novas:
+        execute_values(
+            cursor,
+            "INSERT INTO vendas (cliente_id, valor, servico_id, data_da_venda) VALUES %s;",
+            novas,
+            page_size=1000,
         )
-        inseridas += 1
 
-    return inseridas, sem_cliente, invalidas
+    return len(novas), sem_cliente, invalidas, ja_cadastradas
 
 def _contar_servicos(cursor) -> int:
     cursor.execute("SELECT COUNT(*) FROM servicos;")
@@ -484,59 +589,17 @@ async def importar_clientes(arquivo: UploadFile = File(...)):
         resposta = {"mensagem": "Processamento concluído com sucesso!"}
 
         if aba_clientes is not None:
-            inseridos = 0
-            duplicados = 0
-            incompletos = 0
-            nomes_duplicados = 0
-
-            for linha in abas[aba_clientes]:
-                nome = _texto_de_celula(linha.get("nome"))
-                # Telefone é importante pro resto do sistema (é como o WhatsApp é
-                # aberto), mas não trava a importação -- vira "Não informado" na
-                # ausência, igual já acontece com CPF/e-mail/nascimento na leitura.
-                telefone = _texto_de_celula(linha.get("telefone")) or "Não informado"
-                cpf = _normalizar_cpf(_texto_de_celula(linha.get("cpf")))
-                email = _texto_de_celula(linha.get("email"))
-                data_nasc = _data_de_celula(linha.get("data_nascimento"))
-
-                if not nome or not cpf:
-                    incompletos += 1
-                    continue
-
-                # CPF é o identificador de verdade (documento único por pessoa) --
-                # nome NÃO é (duas pessoas reais diferentes podem se chamar
-                # "Carlos Souza"), então dedup por CPF é o certo aqui.
-                cursor.execute("SELECT id FROM clientes WHERE cpf = %s;", (cpf,))
-                if cursor.fetchone():
-                    duplicados += 1
-                    continue
-
-                # A tabela também tem um índice único em LOWER(nome)
-                # (idx_clientes_nome_unico) -- uma segunda pessoa com o mesmo
-                # nome (CPF diferente) esbarra nele na hora do INSERT. Usa
-                # SAVEPOINT pra essa linha específica virar "duplicado" sem
-                # invalidar a transação inteira e perder o resto do lote.
-                cursor.execute("SAVEPOINT antes_insercao_cliente;")
-                try:
-                    cursor.execute(
-                        "INSERT INTO clientes (nome, telefone, cpf, email, data_nascimento) VALUES (%s, %s, %s, %s, %s);",
-                        (nome, telefone, cpf, email, data_nasc)
-                    )
-                    cursor.execute("RELEASE SAVEPOINT antes_insercao_cliente;")
-                    inseridos += 1
-                except Exception:
-                    cursor.execute("ROLLBACK TO SAVEPOINT antes_insercao_cliente;")
-                    nomes_duplicados += 1
-
-            resposta["clientes_inseridos"] = inseridos
-            resposta["clientes_ignorados_por_duplicidade"] = duplicados
-            resposta["clientes_ignorados_por_dados_incompletos"] = incompletos
-            resposta["clientes_ignorados_por_nome_duplicado"] = nomes_duplicados
+            contadores, cpf_para_id = _importar_clientes(abas[aba_clientes], cursor)
+            resposta.update(contadores)
 
             if aba_vendas is not None:
-                vendas_inseridas, vendas_sem_cliente, _ = _processar_linhas_vendas(abas[aba_vendas], cursor)
+                # Se a aba de vendas é a mesma dos clientes (uma linha por compra), o
+                # mapa CPF -> id já está pronto; senão a função busca o que faltar.
+                mapa = cpf_para_id if aba_vendas == aba_clientes else None
+                vendas_inseridas, vendas_sem_cliente, _, vendas_ja_cadastradas = _processar_linhas_vendas(abas[aba_vendas], cursor, mapa)
                 resposta["vendas_inseridas"] = vendas_inseridas
                 resposta["vendas_ignoradas_sem_cliente_correspondente"] = vendas_sem_cliente
+                resposta["vendas_ignoradas_por_duplicidade"] = vendas_ja_cadastradas
 
         resposta["servicos_criados"] = _contar_servicos(cursor) - servicos_antes
         resposta["servicos_atualizados"] = servicos_atualizados
@@ -586,10 +649,11 @@ async def importar_vendas(arquivo: UploadFile = File(...)):
 
         resposta = {"mensagem": "Processamento concluído com sucesso!"}
         if aba_vendas is not None:
-            inseridas, sem_cliente, invalidas = _processar_linhas_vendas(abas[aba_vendas], cursor)
+            inseridas, sem_cliente, invalidas, ja_cadastradas = _processar_linhas_vendas(abas[aba_vendas], cursor)
             resposta["vendas_inseridas"] = inseridas
             resposta["vendas_ignoradas_sem_cliente_correspondente"] = sem_cliente
             resposta["vendas_ignoradas_por_dados_invalidos"] = invalidas
+            resposta["vendas_ignoradas_por_duplicidade"] = ja_cadastradas
         else:
             resposta["vendas_inseridas"] = 0
             resposta["aviso"] = (

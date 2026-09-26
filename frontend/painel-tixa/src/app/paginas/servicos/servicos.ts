@@ -5,7 +5,7 @@ import { ServicosService } from '../../services/servicos.service';
 import { MotorService } from '../../services/motor.service';
 import { ToastService } from '../../services/toast.service';
 import { RefrescoService } from '../../services/refresco.service';
-import { DIAS_POR_MES, formatarCiclo } from '../../utils/formatacao';
+import { DIAS_POR_MES, formatarCiclo, classeCorServico } from '../../utils/formatacao';
 
 @Component({
   selector: 'app-servicos',
@@ -14,6 +14,9 @@ import { DIAS_POR_MES, formatarCiclo } from '../../utils/formatacao';
   templateUrl: './servicos.html'
 })
 export class ServicosComponent implements OnInit, OnDestroy {
+  readonly formatarCiclo = formatarCiclo;
+  readonly classeCorServico = classeCorServico;
+
   novoServicoNome: string = '';
   novoServicoCiclo: number | null = null;
   novoServicoUnidade: 'dias' | 'meses' = 'dias';

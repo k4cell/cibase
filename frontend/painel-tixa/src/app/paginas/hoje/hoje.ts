@@ -5,7 +5,7 @@ import { MotorService } from '../../services/motor.service';
 import { EstatisticasService } from '../../services/estatisticas.service';
 import { ToastService } from '../../services/toast.service';
 import { RefrescoService } from '../../services/refresco.service';
-import { formatarValor, formatarData } from '../../utils/formatacao';
+import { formatarValor, formatarData, classeCorServico, classeFaixaValor } from '../../utils/formatacao';
 import { ArrastarRolarDirective } from '../../utils/arrastar-rolar.directive';
 
 @Component({
@@ -26,6 +26,8 @@ export class HojeComponent implements OnInit, OnDestroy {
 
   readonly formatarValor = formatarValor;
   readonly formatarData = formatarData;
+  readonly classeCorServico = classeCorServico;
+  readonly classeFaixaValor = classeFaixaValor;
 
   private desregistrar!: () => void;
 
@@ -60,6 +62,10 @@ export class HojeComponent implements OnInit, OnDestroy {
 
   classeStatus(status: string): string {
     return this.motorService.classeStatus(status);
+  }
+
+  classeTextoStatus(status: string): string {
+    return this.motorService.classeTextoStatus(status);
   }
 
   // Data local (hoje + N dias) em aaaa-mm-dd, sem passar por UTC.

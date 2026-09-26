@@ -84,6 +84,7 @@ export class MotorService {
       servicoId: linha.servico_id,
       servicoNome: linha.servico_nome,
       dias: linha.dias_sem_comprar,
+      cicloEsperado: linha.ciclo_esperado,
       status: linha.status,
       faixaValor: linha.faixa_valor,
       baixaConfianca: linha.baixa_confianca,
@@ -170,6 +171,19 @@ export class MotorService {
       'Frio': 'tx-status--frio',
       'Em dia': 'tx-status--em-dia',
       'Sem histórico': 'tx-status--sem-historico'
+    };
+    return mapa[status] || '';
+  }
+
+  // Cor do TEXTO (número em destaque) de cada status -- mesma família das cores
+  // dos selos, pra "há 214 dias" já dizer, pela cor, o quão grave é.
+  classeTextoStatus(status: string): string {
+    const mapa: { [key: string]: string } = {
+      'Recompra próxima': 'tx-texto--recompra',
+      'Atrasado': 'tx-texto--atrasado',
+      'Adormecido': 'tx-texto--adormecido',
+      'Frio': 'tx-texto--frio',
+      'Em dia': 'tx-texto--em-dia'
     };
     return mapa[status] || '';
   }

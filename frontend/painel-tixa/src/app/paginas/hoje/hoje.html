@@ -64,7 +64,10 @@
         <div class="tx-avatar">{{ item.cliente.nome.charAt(0).toUpperCase() }}</div>
         <div>
           <div class="tx-client-name">{{ item.cliente.nome }}</div>
-          <div class="tx-fila-subtitulo">R$ {{ formatarValor(item.cliente.valor_recuperado) }} recuperados · há {{ item.dias }} dias</div>
+          <div class="tx-fila-subtitulo">
+            <strong class="tx-valor-positivo">R$ {{ formatarValor(item.cliente.valor_recuperado) }}</strong> recuperados
+            · <strong [ngClass]="classeTextoStatus(item.status)">há {{ item.dias }} dias</strong> sem comprar
+          </div>
         </div>
       </div>
       <button class="tx-fila-recusar" (click)="abrirConfirmacaoExcluirDaFila(item)" title="Tirar da fila de hoje">
@@ -76,20 +79,24 @@
     </div>
 
     <div class="tx-fila-chips">
-      <span class="tx-badge">{{ item.servicoNome }}</span>
+      <span class="tx-badge tx-chip-servico" [ngClass]="classeCorServico(item.servicoId)">{{ item.servicoNome }}</span>
       <span class="tx-badge" [ngClass]="classeStatus(item.status)">{{ item.status }}</span>
-      <span class="tx-badge">{{ item.faixaValor }}</span>
-      <span class="tx-badge" *ngIf="item.baixaConfianca">Estimativa</span>
+      <span class="tx-badge" [ngClass]="classeFaixaValor(item.faixaValor)" title="Faixa de valor do cliente em relação à sua base">Valor {{ item.faixaValor.toLowerCase() }}</span>
+      <span class="tx-badge tx-badge--neutro" *ngIf="item.baixaConfianca" title="Estimativa com poucos dados ainda">Estimativa</span>
     </div>
 
-    <p class="tx-fila-motivo">{{ item.motivo }}</p>
+    <p class="tx-fila-motivo">
+      Está há <strong [ngClass]="classeTextoStatus(item.status)">{{ item.dias }} dias</strong> sem comprar
+      (ciclo esperado: <strong>{{ item.cicloEsperado }} dias</strong>).
+      <span *ngIf="item.baixaConfianca">Estimativa com poucos dados ainda.</span>
+    </p>
 
     <p class="tx-fila-recompra-aviso" *ngIf="servicosComRecompraProxima(item).length > 0">
       <svg class="tx-icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
         <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
       </svg>
-      Aproveite o contato: {{ servicosComRecompraProxima(item).join(', ') }} também {{ servicosComRecompraProxima(item).length > 1 ? 'estão' : 'está' }} perto da recompra.
+      Aproveite o contato: <strong>{{ servicosComRecompraProxima(item).join(', ') }}</strong> também {{ servicosComRecompraProxima(item).length > 1 ? 'estão' : 'está' }} perto da recompra.
     </p>
 
     <textarea class="tx-fila-textarea" [(ngModel)]="item.mensagemDraft" rows="2"></textarea>
@@ -172,11 +179,11 @@
         <div class="tx-avatar">{{ item.cliente_nome.charAt(0).toUpperCase() }}</div>
         <div>
           <div class="tx-client-name">{{ item.cliente_nome }}</div>
-          <div class="tx-fila-subtitulo">{{ item.servico_nome }}</div>
+          <span class="tx-badge tx-chip-servico tx-chip-servico--pequeno" [ngClass]="classeCorServico(item.servico_id)">{{ item.servico_nome }}</span>
         </div>
       </div>
       <div class="tx-contatado-status">
-        <span class="tx-toolbar-info">{{ item.dias_atras === 0 ? 'Enviado hoje' : 'Enviado há ' + item.dias_atras + ' dia(s)' }}</span>
+        <span class="tx-contatado-quando">{{ item.dias_atras === 0 ? 'Enviado hoje' : 'Enviado há ' + item.dias_atras + ' dia(s)' }}</span>
         <span class="tx-badge tx-status--em-dia" *ngIf="item.reativado">Voltou a comprar em {{ formatarData(item.data_reativacao) }}</span>
 
         <ng-container *ngIf="item.desfecho === 'recusou'">
@@ -261,7 +268,10 @@
           <div class="tx-avatar">{{ item.clienteNome.charAt(0).toUpperCase() }}</div>
           <div>
             <div class="tx-client-name">{{ item.clienteNome }}</div>
-            <div class="tx-fila-subtitulo">{{ item.servicoNome }} · {{ item.textoRetorno }}</div>
+            <div class="tx-fila-subtitulo">
+              <span class="tx-badge tx-chip-servico tx-chip-servico--pequeno" [ngClass]="classeCorServico(item.servicoId)">{{ item.servicoNome }}</span>
+              <strong class="tx-texto--atrasado">{{ item.textoRetorno }}</strong>
+            </div>
           </div>
         </div>
         <div class="tx-adiados-item-acoes">

@@ -40,6 +40,7 @@ export class VendasService {
         const inseridas = resposta.vendas_inseridas;
         const semCliente = resposta.vendas_ignoradas_sem_cliente_correspondente || 0;
         const invalidas = resposta.vendas_ignoradas_por_dados_invalidos || 0;
+        const jaCadastradas = resposta.vendas_ignoradas_por_duplicidade || 0;
         const servicosCriados = resposta.servicos_criados || 0;
         const servicosAtualizados = resposta.servicos_atualizados || 0;
 
@@ -48,6 +49,7 @@ export class VendasService {
         if (inseridas > 0) partes.push(inseridas === 1 ? '1 venda importada' : `${inseridas} vendas importadas`);
         if (servicosCriados > 0) partes.push(servicosCriados === 1 ? '1 serviço cadastrado' : `${servicosCriados} serviços cadastrados`);
         if (servicosAtualizados > 0) partes.push(servicosAtualizados === 1 ? '1 serviço com ciclo atualizado' : `${servicosAtualizados} serviços com ciclo atualizado`);
+        if (jaCadastradas > 0) partes.push(jaCadastradas === 1 ? '1 venda já estava cadastrada' : `${jaCadastradas} vendas já estavam cadastradas`);
         if (semCliente > 0) partes.push(semCliente === 1 ? '1 venda ignorada (CPF não encontrado na base)' : `${semCliente} vendas ignoradas (CPF não encontrado na base)`);
         if (invalidas > 0) partes.push(invalidas === 1 ? '1 linha ignorada por dados inválidos' : `${invalidas} linhas ignoradas por dados inválidos`);
 

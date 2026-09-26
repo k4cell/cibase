@@ -1,6 +1,6 @@
 {
   "name": "painel-cibase",
-  "version": "0.30.0",
+  "version": "0.30.2",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

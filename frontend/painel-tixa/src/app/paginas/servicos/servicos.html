@@ -51,11 +51,14 @@
 </div>
 
 <div class="tx-servico-grid" style="margin-top: 24px;" *ngIf="servicosService.servicos.length > 0">
-  <div class="tx-servico-card" *ngFor="let servico of servicosService.servicos">
+  <div class="tx-servico-card" [ngClass]="classeCorServico(servico.id)" *ngFor="let servico of servicosService.servicos">
     <ng-container *ngIf="servicoEditandoId !== servico.id; else modoEdicaoServico">
       <div class="tx-servico-card-nome">{{ servico.nome }}</div>
       <div class="tx-servico-card-ciclo">
-        {{ exibirCiclo(servico) }}
+        <ng-container *ngIf="formatarCiclo(servico) as ciclo; else semCiclo">
+          Ciclo esperado: <strong>{{ ciclo }}</strong>
+        </ng-container>
+        <ng-template #semCiclo>Ciclo ainda não definido</ng-template>
       </div>
       <div class="tx-servico-card-msg" *ngIf="servico.mensagem_modelo" [title]="servico.mensagem_modelo">Mensagem própria</div>
       <div class="tx-servico-card-acoes">
